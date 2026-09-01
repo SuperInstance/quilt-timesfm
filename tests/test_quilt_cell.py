@@ -8,6 +8,12 @@ import os
 import sys
 import numpy as np
 
+# Force the synthetic forecast in tests so we don't try to download
+# the 800MB TimesFM 3.0 checkpoint. The cell shape, op indices,
+# FNV-1a state hash, and forecast shape are all the same in both
+# modes — that's the polyformalism claim.
+os.environ.setdefault("QUILT_TIMESFM_SYNTHETIC", "1")
+
 # Make sure the parent dir is on the path so we can import quilt_cell
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

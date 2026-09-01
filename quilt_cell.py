@@ -220,9 +220,17 @@ class TimeCell:
         This is the substrate binding: the actual call to TimesFM.
         In the no-model case (e.g. CI without the 800MB checkpoint),
         we fall back to a synthetic FNV-1a-seeded forecast.
+
+        Set the env var `QUILT_TIMESFM_SYNTHETIC=1` to force the
+        synthetic forecast without trying the real model. Useful
+        in CI, in tests, and on machines without the 800MB model
+        checkpoint.
         """
         if self.context is None or self.horizon == 0:
             return -1
+        import os
+        if os.environ.get("QUILT_TIMESFM_SYNTHETIC") == "1":
+            return self._forecast_synthetic()
         # Try the real TimesFM call first
         try:
             return self._forecast_real()

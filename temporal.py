@@ -792,9 +792,12 @@ class TemporalReasoner:
         # Trend
         trend = _detect_trend(point)
         # ID and timestamp
+        # Use uuid4 (random) for the id, so two calls in the same
+        # millisecond with the same source+horizon+seed still get
+        # different ids. The source+horizon+seed are kept in the
+        # provenance dict for reproducibility.
         ts = int(time.time() * 1000)
-        id_seed = f"{source}:{ts}:{horizon}:{seed}"
-        fid = hashlib.sha256(id_seed.encode("utf-8")).hexdigest()[:16]
+        fid = uuid.uuid4().hex[:16]
         fo = ForecastObject(
             id=fid,
             source=source,
