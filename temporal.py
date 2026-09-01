@@ -292,8 +292,23 @@ class CounterfactualReasoner:
         self.cell = cell
         self._baseline = None
 
+    def _ensure_horizon(self) -> None:
+        """Default the horizon if the caller didn't set one.
+
+        The counterfactual needs a non-zero horizon to compute an
+        impact. The default is min(16, context_len // 4), which gives
+        a short forecast on small contexts and a longer one on big.
+        """
+        if self.cell.horizon > 0:
+            return
+        if self.cell.context is None:
+            return
+        default = max(1, min(16, len(self.cell.context) // 4))
+        self.cell.set_horizon(default)
+
     def baseline(self) -> np.ndarray:
         """Snapshot the baseline forecast."""
+        self._ensure_horizon()
         self.cell.forecast_()
         self._baseline = self.cell.read_point(0).copy()
         return self._baseline
@@ -322,8 +337,8 @@ class CounterfactualReasoner:
                 mean = ctx.mean()
                 ctx = mean + (ctx - mean) * (1 + delta)
             elif variable == "horizon":
-                # change the horizon
-                new_cell.set_horizon(int(self.cell.horizon * (1 + delta)))
+                # change the horizon (baseline already set, so cell.horizon > 0)
+                new_cell.set_horizon(max(1, int(self.cell.horizon * (1 + delta))))
             else:
                 # covariate: scale the past-only covariate
                 pass

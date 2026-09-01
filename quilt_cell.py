@@ -295,7 +295,18 @@ class TimeCell:
         Fully vectorized via numpy. Same shape, same range, same 9
         quantiles as the C port. Bit-exact when the context is identical
         (same FNV-1a seed).
+
+        Numpy uint64 multiplication can flag "overflow" when the
+        product exceeds 2^64 — FNV-1a multiplications are *defined* to
+        wrap mod 2^64, so the warning is noise. We mask the warning
+        in this method only.
         """
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            return self._forecast_synthetic_impl()
+
+    def _forecast_synthetic_impl(self) -> int:
         H = self.horizon
         V = self.n_variates
         if H == 0 or V == 0:
