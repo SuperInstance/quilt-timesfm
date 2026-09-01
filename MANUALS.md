@@ -688,8 +688,4 @@ The 5 manuals cover the 5 most common patterns:
 5. Real-time dashboard (the live)
 
 Each manual is a complete walk-through: real problem, real
-solution, real code. The cowboy rode the 5 patterns. The cowboy
-rode the 5 manuals. The cowboy rode the 5 use cases. The cowboy
-rode the Quilt.
-
-— *The Cowboy*
+solution, real code.

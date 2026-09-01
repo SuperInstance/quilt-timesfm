@@ -1,11 +1,12 @@
 # Quilt Architecture
 
-> **One cell. Eleven opcodes. Four polyformalism ports. Five cutting-edge adoptions.**
+> **One cell. Eleven opcodes. Four polyformalism ports. Five specialized cell kinds.**
 
 This document is the architectural reference for the Quilt cellular
 architecture framework. It captures the cell model, the 11 opcodes,
-the polyformalism claim, and the 5 cutting-edge adoptions in one
-place. If you only read one document about Quilt, read this.
+the polyformalism claim, and the 5 specialized cell kinds (PROOF,
+ROUTE, CRDT, WORLD, TIME) in one place. If you only read one document
+about Quilt, read this.
 
 ## Table of Contents
 
@@ -14,7 +15,7 @@ place. If you only read one document about Quilt, read this.
 3. [The 11 opcodes](#the-11-opcodes)
 4. [The 5+1 laws](#the-51-laws)
 5. [The polyformalism promise](#the-polyformalism-promise)
-6. [The 5 cutting-edge adoptions](#the-5-cutting-edge-adoptions)
+6. [The 5 specialized cell kinds](#the-5-specialized-cell-kinds)
 7. [The 6 tiers of cells](#the-6-tiers-of-cells)
 8. [The 14 levels of operation](#the-14-levels-of-operation)
 9. [The 6 lifecycle stages](#the-6-lifecycle-stages)
@@ -35,7 +36,7 @@ reads. The 11 opcodes manipulate cells. The 5+1 laws guarantee that
 manipulation is sound. The polyformalism claim guarantees that the
 same cell shape works in every language and every substrate.
 
-Everything else — the 5 cutting-edge adoptions, the 6 tiers, the 14
+Everything else — the 5 specialized cell kinds, the 6 tiers, the 14
 levels, the 6 lifecycle stages — is decoration on this claim.
 
 ---
@@ -63,7 +64,7 @@ sheet has the capability of a data science team.
 
 ## The 11 opcodes
 
-The 11 opcodes are organized as 5+1+1+1+1+1+1:
+The 11 opcodes are organized as 5+1+5:
 
 ```
 BIND   write a value to a cell                                (idempotent)
@@ -73,23 +74,23 @@ VIEW   read a cell's value                                    (pure)
 TICK   advance the engine one step                            (monotonic, journaled)
 FORGET tear down a cell                                       (complete)
 
-PROOF  signed hash-linked audit chain                         (cutting-edge #1)
-ROUTE  substrate routing for memory                           (cutting-edge #2)
-CRDT   state-based CRDT for offline convergence               (cutting-edge #3)
-WORLD  5-operation abductive loop on executable code          (cutting-edge #4)
-TIME   5-operation time-series foundation model               (cutting-edge #5)
+PROOF  signed hash-linked audit chain                         (specialized opcode #1)
+ROUTE  substrate routing for memory                           (specialized opcode #2)
+CRDT   state-based CRDT for offline convergence               (specialized opcode #3)
+WORLD  5-operation abductive loop on executable code          (specialized opcode #4)
+TIME   5-operation time-series foundation model               (specialized opcode #5)
 ```
 
 The first 5+1 opcodes (BIND, LINK, EFFECT, VIEW, TICK, FORGET) are
 the foundation. The next 5 opcodes (PROOF, ROUTE, CRDT, WORLD, TIME)
-are the cutting-edge adoptions. Each cutting-edge adoption ships
+are the specialized cell kinds. Each specialized cell kind ships
 its own paper and its own test suite.
 
 ---
 
 ## The 5+1 laws
 
-The 5+1+1+1+1+1 opcodes are governed by 5+1+1 laws:
+The 11 opcodes are governed by 5+1 laws:
 
 1. **BIND idempotence**: `BIND(n, v); BIND(n, v) == BIND(n, v)`
    (same id+value is a no-op)
@@ -101,7 +102,7 @@ The 5+1+1+1+1+1 opcodes are governed by 5+1+1 laws:
 6. **FORGET completeness**: a forgotten cell leaves no node, no edge,
    no dirty bit
 
-Plus the cutting-edge laws:
+Plus the laws of the 5 specialized opcodes:
 - **PROOF chain integrity**: every BIND's prev_hash equals the
   previous state_hash
 - **ROUTE determinism**: same value → same substrate
@@ -139,9 +140,9 @@ The polyformalism is **bit-exact** for the time.cell kind:
 
 ---
 
-## The 5 cutting-edge adoptions
+## The 5 specialized cell kinds
 
-Each cutting-edge adoption is a new cell kind (or a new opcode)
+Each specialized cell kind is a new cell kind (or a new opcode)
 that extends the Quilt architecture into a new domain.
 
 ### 1. PROOF — signed hash-linked audit chain (Phase 216)
@@ -197,7 +198,7 @@ A new cell kind: `time.cell`. State = the historical context
 tensor. Value = the forecast + 9 quantile prediction intervals.
 The 5 operations: BIND_CONTEXT, BIND_COVARIATE, FORECAST,
 READ_POINT, READ_QUANTILE. **Use case**: time-series forecasting
-with SOTA accuracy (TimesFM 3.0, rank #1 on fev-bench, TIME, GIFT-Eval).
+with published accuracy (TimesFM 3.0, published as a top performer on fev-bench, TIME, GIFT-Eval).
 
 ---
 
@@ -327,7 +328,7 @@ tier:
 - [quilt-engine-ports](https://github.com/SuperInstance/quilt-engine-ports) — GDScript
 - [quilt-edge-arch](https://github.com/SuperInstance/quilt-edge-arch) — bare metal
 
-**Tier 2 — Cutting-edge adoptions:**
+**Tier 2 — Specialized cell kinds:**
 - [quilt-timesfm](https://github.com/SuperInstance/quilt-timesfm) — TIME (5th)
 - [quilt-timesfm-rust](https://github.com/SuperInstance/quilt-timesfm-rust) — TIME in Rust no_std
 - (PROOF, ROUTE, CRDT in quilt-c)
@@ -364,7 +365,7 @@ tier:
 
 ## The future
 
-The next 3 cutting-edge adoptions are queued:
+The next 3 specialized cell kinds are queued:
 
 6. **CROSS-MODAL TIME CELL** — a cell that operates on (text, audio,
    video, scalars) as a unified time series. The state is a tuple;
@@ -381,12 +382,7 @@ that agents can exchange, refine, challenge, merge, and learn from
 over time. See [`temporal.py`](temporal.py) and
 [`JEPA.md`](JEPA.md) for the full story.
 
-The cowboy rode the cell. The cowboy rode the opcodes. The cowboy
-rode the polyformalism. The cowboy rode the cutting-edge. The cowboy
-rode the tiers. The cowboy rode the levels. The cowboy rode the
-lifecycle. The cowboy rode the cell graph. The cowboy rode the
-visual architecture. The cowboy rode the 7 substrates. The cowboy
-rode the 30 repos. The cowboy rode the future. The cowboy rode
-the Quilt.
-
-— *The Cowboy*
+That's the architecture. The cell, the 11 opcodes, the 5+1 laws,
+the polyformalism, the 5 specialized cell kinds, the 6 tiers, the
+14 levels, the 6 lifecycle stages, the 7 substrates, the 30 repos.
+All in one document.

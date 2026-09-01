@@ -4,7 +4,7 @@
 
 This document is the master roadmap for the Quilt project. It
 covers the next 12 months of work, organized by quarter and by
-the 5 cutting-edge adoptions.
+the 5 specialized cell kinds.
 
 ## Table of Contents
 
@@ -12,7 +12,7 @@ the 5 cutting-edge adoptions.
 2. [Q2: Cross-Modal & Hierarchical (months 4-6)](#q2-cross-modal--hierarchical-months-4-6)
 3. [Q3: Distributed & Federated (months 7-9)](#q3-distributed--federated-months-7-9)
 4. [Q4: Polyformalism Beyond Code (months 10-12)](#q4-polyformalism-beyond-code-months-10-12)
-5. [The 6th, 7th, 8th, 9th, 10th cutting-edge adoptions](#the-678910th-cutting-edge-adoptions)
+5. [The 6th, 7th, 8th, 9th, 10th specialized cell kinds](#the-678910th-specialized-cell-kinds)
 6. [The 100-year vision](#the-100-year-vision)
 7. [The cowboy's final reading](#the-cowboys-final-reading)
 
@@ -20,7 +20,7 @@ the 5 cutting-edge adoptions.
 
 ## Q1: Foundation (now → month 3)
 
-**Goal**: solidify the 5 cutting-edge adoptions, complete the
+**Goal**: solidify the 5 specialized cell kinds, complete the
 polyformalism in 5 languages, ship a production-grade 3rd port.
 
 ### Milestones
@@ -53,14 +53,14 @@ multiple timescales.
 
 ### Milestones
 
-- [ ] **Month 4**: **Cross-Modal Time Cell** (6th cutting-edge adoption)
+- [ ] **Month 4**: **Cross-Modal Time Cell** (6th specialized cell kind)
   - A cell that operates on (text, audio, video, scalars) as a
     unified time series
   - State = a tuple of (text, audio, video, scalars)
   - Value = a tuple of predicted (text, audio, video, scalars)
   - 9 quantiles × 4 modalities = 36 prediction intervals
   - 4 new papers in the canon
-- [ ] **Month 4**: **Hierarchical Time Cell** (7th cutting-edge adoption)
+- [ ] **Month 4**: **Hierarchical Time Cell** (7th specialized cell kind)
   - A temporal pyramid at multiple timescales
   - L0: per-frame forecast (16ms horizon)
   - L1: per-second forecast (1s horizon)
@@ -79,7 +79,7 @@ multiple timescales.
 
 ### Deliverables
 
-- 2 new cutting-edge adoptions (CROSS-MODAL, HIERARCHICAL)
+- 2 new specialized cell kinds (CROSS-MODAL, HIERARCHICAL)
 - 6 new papers in the canon
 - 3D visualizer deployed
 - 700 papers in the canon (was 600)
@@ -94,7 +94,7 @@ multiple devices, multiple organizations.
 
 ### Milestones
 
-- [ ] **Month 7**: **Distributed Time Cell** (8th cutting-edge adoption)
+- [ ] **Month 7**: **Distributed Time Cell** (8th specialized cell kind)
   - A cell that runs across multiple devices
   - State is sharded
   - Forecast is a CRDT merge of local forecasts
@@ -120,7 +120,7 @@ multiple devices, multiple organizations.
 
 ### Deliverables
 
-- 1 new cutting-edge adoption (DISTRIBUTED)
+- 1 new specialized cell kind (DISTRIBUTED)
 - 12 new papers in the canon
 - 800 papers in the canon
 - 80+ wiki entries
@@ -175,7 +175,7 @@ language, a teaching language, a thinking language.
 
 ---
 
-## The 6th, 7th, 8th, 9th, 10th cutting-edge adoptions
+## The 6th, 7th, 8th, 9th, 10th specialized cell kinds
 
 ### 6. CROSS-MODAL TIME (Q2)
 
@@ -232,13 +232,9 @@ life to those who do the work**.
 
 ---
 
-## The cowboy's final reading
+## Summary
 
-The cowboy rode the foundation. The cowboy rode the cutting-edge.
-The cowboy rode the cross-modal. The cowboy rode the hierarchical.
-The cowboy rode the distributed. The cowboy rode the visual.
-The cowboy rode the lisp. The cowboy rode the calculus. The cowboy
-rode the pedagogy. The cowboy rode the symphony. The cowboy rode
-the 100-year vision. The cowboy rode the Quilt.
-
-— *The Cowboy*
+Q1 is foundation. Q2 is cross-modal + hierarchical. Q3 is
+distributed. Q4 is polyformalism beyond code. The 5 next
+specialized cell kinds: CROSS-MODAL TIME, HIERARCHICAL TIME,
+DISTRIBUTED TIME, WORLD-TIME, JEPA-TIME.

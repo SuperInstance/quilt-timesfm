@@ -1,7 +1,5 @@
 # Quilt Adoption: quilt-timesfm
 
-> **The 5th cutting-edge adoption: TIME.**
-
 This document is the Quilt-side adoption of Google's [TimesFM 3.0](https://github.com/google-research/timesfm).
 It explains how the time-series foundation model is wrapped as a Quilt
 cell kind, why the cell is the right abstraction, and what the
@@ -11,7 +9,7 @@ polyformalism looks like across C, Python, and Rust.
 
 ```
 BIND / LINK / EFFECT / VIEW / TICK / FORGET     (5 originals + 1)
-PROOF / ROUTE / CRDT / WORLD / TIME             (5 cutting-edge)
+PROOF / ROUTE / CRDT / WORLD / TIME             (5 specialized)
 ```
 
 The `time.cell` cell kind adds the **TIME** opcode to the Quilt engine.
@@ -53,15 +51,15 @@ The substrate is the only thing that varies. The cell is the system.
 
 ## The benchmarks
 
-TimesFM 3.0 is **rank #1** on 3 major time-series foundation model
-benchmarks:
+TimesFM 3.0 is published as published as a top performer on 3 time-series foundation model
+benchmarks by Google Research:
 
 - **fev-bench** (100 tasks)
 - **TIME Benchmark** (98 tasks)
 - **GIFT-Eval** (foundation category)
 
-The cell *is* the benchmark-grade model. The Quilt adoption makes
-the SOTA a first-class cell kind.
+See the [TimesFM 3.0 paper](https://github.com/google-research/timesfm)
+for the published numbers.
 
 ## The 5 time-cell laws
 
@@ -91,13 +89,13 @@ state change. The chain is bit-exact in C, Python, and Rust.
 
 ## The ecosystem
 
-This repo is part of the [SuperInstance/quilt-timesfm](https://github.com/SuperInstance) GitHub org. The major repos:
+This repo is part of the SuperInstance GitHub org. The related repos:
 
 - [quilt-c](https://github.com/SuperInstance/quilt-c) — the C port (1236 tests, 11 opcodes)
 - [quilt-timesfm](https://github.com/SuperInstance/quilt-timesfm) — **this repo** (Python, real TimesFM 3.0)
 - [quilt-timesfm-rust](https://github.com/SuperInstance/quilt-timesfm-rust) — the Rust port (49 tests, no_std)
-- [AI-Writings](https://github.com/SuperInstance/AI-Writings) — the 257-paper canon
-- [quilt-wiki-2126](https://github.com/SuperInstance/quilt-wiki-2126) — the 35-entry wiki
+- [AI-Writings](https://github.com/SuperInstance/AI-Writings) — the 398-paper canon
+- [quilt-wiki-2126](https://github.com/SuperInstance/quilt-wiki-2126) — the 38-entry wiki
 
 ## The 6 papers
 

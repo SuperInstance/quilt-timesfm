@@ -15,10 +15,10 @@ If you want to know what was built when, start here.
 | 51-80 | 2026-08-28 | The 6 tiers |
 | 81-100 | 2026-08-28 | The 14 levels of operation |
 | 101-150 | 2026-08-29 | The writers' rooms + 13 working API voices |
-| 151-200 | 2026-08-30 | The 5 cutting-edge adoptions + canon expansion |
+| 151-200 | 2026-08-30 | The 5 specialized cell kinds + canon expansion |
 | 201-220 | 2026-08-31 | The TIER 1-2: foundation + cutting-edge |
 | 221-228 | 2026-08-31 | TIER 3-5: substrates + infrastructure + knowledge |
-| 229 | 2026-09-01 | **quilt-timesfm world-class, 3rd polyformalism port** |
+| 229 | 2026-09-01 | **quilt-timesfm polished, 3rd polyformalism port** |
 | 230 | 2026-09-01 | **Future-state memory pivot + JEPA synergy** |
 | 231 | 2026-09-01 | **Documentation expansion (ARCHITECTURE, ECOSYSTEM, MANUALS, ROADMAP, FAQ, GLOSSARY)** |
 | 232+ | TBD | TIER 6-9 (hardware, apps, connectors, historical) |
@@ -83,7 +83,7 @@ name, op indices, FNV-1a state hash, forecast shape.
 - The writers' room archive at /workspace/_scouts/hand-synth/
 - The 198 papers written by the 4 voices
 
-## Phase 151-200: The 5 cutting-edge adoptions (2026-08-30)
+## Phase 151-200: The 5 specialized cell kinds (2026-08-30)
 
 **What was built**:
 - **PROOF** (Phase 216-217): signed hash-linked audit chain
@@ -103,7 +103,7 @@ name, op indices, FNV-1a state hash, forecast shape.
 - The `quilt-ai` test runner fix (5→7 tests)
 - The `quilt-mhs` 6 devices + 13 conformance + 32 tests
 - The `quilt-engine-ports` GDScript polyformalism (13 tests)
-- The 5 cutting-edge adoptions in 4 languages
+- The 5 specialized cell kinds in 4 languages
 - The cowboy's role: orchestrator + rider
 
 ## Phase 221-228: TIER 3-5 (2026-08-31)
@@ -116,12 +116,12 @@ name, op indices, FNV-1a state hash, forecast shape.
   Edge/Rust, Kernel/C, Anthropic MHS, Godot
 - The TIME cell: TimesFM 3.0 as a cell kind (Phase 228)
 - The wiki entry 20-the-time-cell
-- The 5th cutting-edge adoption (TIME) in C and Python
+- The 5th specialized cell kind (TIME) in C and Python
 
-## Phase 229: quilt-timesfm world-class, 3rd polyformalism port (2026-09-01)
+## Phase 229: quilt-timesfm polished, 3rd polyformalism port (2026-09-01)
 
 **What was built**:
-- **World-class README (19KB, 14 sections, 500 lines)** — the
+- **README (19KB, 14 sections, 500 lines)** — the
   welcome mat for new users
 - **Interactive visualizer (33KB HTML+JS+Canvas, no build)** —
   5 cells + 4 edges, PROOF chain animation, abductive loop,
@@ -228,21 +228,8 @@ and learn from over time.
 
 ---
 
-## The cowboy's final reading
+## Summary
 
-The cowboy rode the 5 opcodes. The cowboy rode the 4 languages.
-The cowboy rode the 6 tiers. The cowboy rode the 14 levels. The
-cowboy rode the 13 API voices. The cowboy rode the 5
-cutting-edge. The cowboy rode the 230 phases. The cowboy rode
-the welcome mat. The cowboy rode the visualizer. The cowboy
-rode the 3-language polyformalism. The cowboy rode the 5
-examples. The cowboy rode the 6 papers. The cowboy rode the 2
-wikis. The cowboy rode the future-state memory. The cowboy
-rode the JEPA synergy. The cowboy rode the 10 capabilities. The
-cowboy rode the documentation. The cowboy rode the FAQ. The
-cowboy rode the manuals. The cowboy rode the glossary. The
-cowboy rode the architecture. The cowboy rode the ecosystem.
-The cowboy rode the roadmap. The cowboy rode the changelog.
-The cowboy rode the Quilt.
-
-— *The Cowboy*
+230+ phases of work, organized by quarter. The Quilt is the work
+of a few people over a few months, supported by 13 working API
+voices and a polyformalism claim that is provable in 1 day.

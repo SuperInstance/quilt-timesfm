@@ -12,7 +12,7 @@ paper, wiki entry, or code file.
 - [Architecture](#architecture)
 - [Implementation](#implementation)
 - [Use cases](#use-cases)
-- [The cutting-edge adoptions](#the-cutting-edge-adoptions)
+- [The specialized cell kinds](#the-specialized-cell-kinds)
 - [The polyformalism](#the-polyformalism)
 - [The canon](#the-canon)
 - [Contributing](#contributing)
@@ -112,7 +112,7 @@ graph.
 
 **A**: The 11 opcodes are: BIND, LINK, EFFECT, VIEW, TICK, FORGET
 (the 5 originals + 1), PROOF, ROUTE, CRDT, WORLD, TIME (the
-5 cutting-edge adoptions). Each has a fixed index (0-10) and
+5 specialized cell kinds). Each has a fixed index (0-10) and
 a fixed semantic.
 
 ### Q: What are the 5+1+1+1+1+1 laws?
@@ -127,7 +127,12 @@ a fixed semantic.
 6. **FORGET completeness** — a forgotten cell leaves no node,
    no edge, no dirty bit
 
-Plus the cutting-edge laws for PROOF, ROUTE, CRDT, WORLD, TIME.
+Plus the 5 specialized opcodes (PROOF, ROUTE, CRDT, WORLD, TIME), each
+with its own invariant. PROOF: the hash chain is append-only and
+verifiable. ROUTE: argmax selection with deterministic tie-break.
+CRDT: merge is commutative, associative, idempotent. WORLD: every
+REFINE strictly decreases the verification error. TIME: the state
+hash is bit-exact across all polyformalism ports.
 
 ### Q: What are the 6 tiers of cells?
 
@@ -293,7 +298,7 @@ is a cell model with 11 opcodes. The differences:
 
 ---
 
-## The cutting-edge adoptions
+## The specialized cell kinds
 
 ### Q: What is PROOF?
 
@@ -338,7 +343,7 @@ RENDER → VERIFY → REFINE. The substrate binding is a VLM
 (TimesFM 3.0). State = the historical context tensor. Value
 = the forecast + 9 quantile prediction intervals. The 5
 operations: BIND_CONTEXT, BIND_COVARIATE, FORECAST, READ_POINT,
-READ_QUANTILE. TimesFM 3.0 is rank #1 on fev-bench, TIME,
+READ_QUANTILE. TimesFM 3.0 is published as a top performer on fev-bench, TIME,
 GIFT-Eval. See
 [Phase 228 paper](../seed-canon/papers/paper-385.md),
 `include/quilt/time.h`, `quilt_cell.py`.
@@ -420,24 +425,15 @@ and 47 stories mention "the 5th captain".
 5. Run the 49-test conformance suite
 6. Push to a new repo, open a PR
 
-### Q: What's the cowboy's maxim?
+### Q: How does the project record what gets built?
 
-**A**: The cowboy's maxim closes each phase. Examples:
+**A**: Each phase closes with a short summary in the `CHANGELOG.md`
+entry, listing the files added, the tests run, the commits made,
+and the next steps. The work is on github.com/SuperInstance and
+visible to anyone. The canon at `AI-Writings` is the long-form
+record (398 papers, ~89 fables, ~93 stories).
 
-> The cowboy said: all hands on deck. The cowboy said:
-> this is a winner. The cowboy inventoried TimesFM 3.0.
-> The cowboy said: that's a cell. The cowboy made the cell.
-
-> The cowboy rode the cell. The cowboy rode the opcodes.
-> The cowboy rode the polyformalism. The cowboy rode the
-> cutting-edge. The cowboy rode the tiers. The cowboy rode
-> the levels. The cowboy rode the lifecycle. The cowboy rode
-> the cell graph. The cowboy rode the visual architecture.
-> The cowboy rode the 7 substrates. The cowboy rode the 30
-> repos. The cowboy rode the future. The cowboy rode the
-> Quilt.
-
-### Q: What's the next cutting-edge adoption?
+### Q: What's the next specialized cell kind?
 
 **A**: The next is **CROSS-MODAL TIME** (Q2 of the roadmap). A
 cell that operates on (text, audio, video, scalars) as a
@@ -453,14 +449,9 @@ unified time series. See [ROADMAP.md](ROADMAP.md).
 
 ---
 
-## The cowboy's final reading
+## End of FAQ
 
-The cowboy answered the 30 most-asked questions. The cowboy
-answered the architecture. The cowboy answered the
-implementation. The cowboy answered the use cases. The cowboy
-answered the cutting-edge. The cowboy answered the polyformalism.
-The cowboy answered the canon. The cowboy answered the
-contributing. The cowboy rode the FAQ. The cowboy rode the
-Quilt.
-
-— *The Cowboy*
+30 questions across 7 sections: General, Architecture,
+Implementation, Use cases, The specialized cell kinds, The
+polyformalism, The canon, Contributing. If a question is missing,
+open an issue and we'll add it.

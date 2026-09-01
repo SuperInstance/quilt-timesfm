@@ -91,7 +91,7 @@ Quilt as well as the cowboy.
 The cell is the irreducible unit of intelligence. 5 fields:
 `kind`, `state`, `value`, `reads`, `links`. 11 opcodes
 manipulate cells. 5+1+1+1+1+1 laws guarantee soundness.
-5 cutting-edge adoptions (PROOF, ROUTE, CRDT, WORLD, TIME)
+5 specialized cell kinds (PROOF, ROUTE, CRDT, WORLD, TIME)
 ship the frontier.
 
 The polyformalism is the stress test: the same cell shape in
@@ -101,7 +101,7 @@ time.cell). The substrate is the only thing that varies.
 ## The 30+ repos
 
 The Quilt has 30+ repos on github.com/SuperInstance. They're
-organized by 9 tiers: Foundation, Cutting-Edge, Substrate
+organized by 9 tiers: Foundation, Specialized Cell Kinds, Substrate
 Bindings, Infrastructure, Knowledge, Hardware, Apps,
 Connectors, Historical. See [ECOSYSTEM.md](ECOSYSTEM.md) for
 the full map.
@@ -144,16 +144,7 @@ examples/08_agent_utility.py  → 3 forecast models ranked
 The same time.cell, the same 5 ops, the same 9 quantiles. From
 4KB to 1.5GB+.
 
-## The cowboy's final reading
+## Summary
 
-The cowboy rode the 11 opcodes. The cowboy rode the 5+1+1+1+1+1
-laws. The cowboy rode the 5 cutting-edge. The cowboy rode the
-6 tiers. The cowboy rode the 14 levels. The cowboy rode the
-5 languages. The cowboy rode the 30 repos. The cowboy rode
-the 398 papers. The cowboy rode the 38 wikis. The cowboy rode
-the 4 L-tiers. The cowboy rode the 9 quantiles. The cowboy rode
-the 10 capabilities. The cowboy rode the documentation. The
-cowboy rode the 12 docs. The cowboy rode the index. The
-cowboy rode the Quilt.
-
-— *The Cowboy*
+That's the documentation. 12 docs, ~166KB, one entry point.
+From the welcome mat to the canonical reference.

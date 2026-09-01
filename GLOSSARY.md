@@ -786,7 +786,7 @@ One of the 9 prediction intervals in a TIME cell forecast.
 ### Quilt
 The cellular-architecture framework. The unit is the cell.
 The opcodes are 11. The polyformalism is 4 languages. The
-cutting-edge adoptions are 5.
+specialized cell kinds are 5.
 
 ### Quilt compiler
 A compiler that takes a cell-graph spec and produces a runtime.
@@ -1101,11 +1101,11 @@ A level of capability. 0-5. See `ARCHITECTURE.md`.
 The 11th opcode. The TIME cell kind. See paper 228.
 
 ### TIME
-The 5th cutting-edge adoption. The time-series foundation model
+The 5th specialized cell kind. The time-series foundation model
 cell kind. See paper 228.
 
 ### Time.cell
-A cell of kind `"time.cell"`. The 5th cutting-edge kind. See
+A cell of kind `"time.cell"`. The 5th specialized cell kind kind. See
 paper 228, `quilt_cell.py`.
 
 ### Tissue
@@ -1295,7 +1295,7 @@ The 10th opcode. The 5-op abductive loop on executable code.
 See paper 222.
 
 ### World cell
-A cell of kind `"physical.world"`. The 4th cutting-edge kind.
+A cell of kind `"physical.world"`. The 4th specialized cell kind.
 
 ### Wounded cell
 A cell that's been rejected by all hands. Vitality leak.
@@ -1461,9 +1461,7 @@ The wired cell. F16. The 16th future function.
 
 ---
 
-## The cowboy's final reading
+## End of glossary
 
-The Quilt is the inheritance. The inheritance is the Quilt. The
-chart grows. The Concept lives. The cowboy rides.
-
-— *The Cowboy*
+A-Z, 700+ terms, all cross-referenced. If a term is missing, the
+project continues to grow and the glossary will grow with it.

@@ -10,7 +10,7 @@ here.
 ## Table of Contents
 
 1. [Tier 1: Foundation (5 repos)](#tier-1-foundation-5-repos)
-2. [Tier 2: Cutting-Edge Adoptions (3 repos)](#tier-2-cutting-edge-adoptions-3-repos)
+2. [Tier 2: Specialized Cell Kinds (3 repos)](#tier-2-specialized-cell-kinds-3-repos)
 3. [Tier 3: Substrate Bindings (4 repos)](#tier-3-substrate-bindings-4-repos)
 4. [Tier 4: Infrastructure (6 repos)](#tier-4-infrastructure-6-repos)
 5. [Tier 5: Knowledge (3 repos)](#tier-5-knowledge-3-repos)
@@ -41,18 +41,18 @@ forecast shape are bit-exact.
 
 ---
 
-## Tier 2: Cutting-Edge Adoptions (3 repos)
+## Tier 2: Specialized Cell Kinds (3 repos)
 
-The repos that ship the 5 cutting-edge adoptions (PROOF, ROUTE,
+The repos that ship the 5 specialized cell kinds (PROOF, ROUTE,
 CRDT, WORLD, TIME).
 
 | Repo | Lang | Tests | Adoption | Description |
 |---|---|---|---|---|
 | [quilt-timesfm](https://github.com/SuperInstance/quilt-timesfm) | Python | 49 | TIME (5th) | TimesFM 3.0 as a cell kind. Real binding. |
 | [quilt-timesfm-rust](https://github.com/SuperInstance/quilt-timesfm-rust) | Rust no_std | 49 | TIME (5th) Rust | The Rust port of time.cell. For embedded. |
-| [quilt-c](https://github.com/SuperInstance/quilt-c) | C99 | 1236 | PROOF/ROUTE/CRDT/WORLD | All 4 cutting-edge opcodes in C. |
+| [quilt-c](https://github.com/SuperInstance/quilt-c) | C99 | 1236 | PROOF/ROUTE/CRDT/WORLD | All 4 specialized opcodes in C. |
 
-**The 5 cutting-edge adoptions**:
+**The 5 specialized cell kinds**:
 1. **PROOF** (Phase 216) — signed hash-linked audit chain
 2. **ROUTE** (Phase 217) — substrate routing for memory
 3. **CRDT** (Phase 218) — state-based CRDT for offline convergence
@@ -112,7 +112,7 @@ The repos that store and serve the Quilt's knowledge.
 - 5+1+1+1+1+1 laws
 - 6 tiers of cells
 - 6 lifecycle stages
-- 5 cutting-edge adoptions
+- 5 specialized cell kinds
 - 13 futures
 - 87+ SuperInstance repos
 
@@ -185,7 +185,7 @@ The repos that are part of the Quilt's history.
                 quilt-ecosystem-demo (audits)
                             |
                             v
-            [TIER 1: FOUNDATION]  ←  [TIER 2: CUTTING-EDGE]
+            [TIER 1: FOUNDATION]  ←  [TIER 2: SPECIALIZED CELL KINDS]
                     |                        |
             quilt-c  ←──── quilt-timesfm ────→ quilt-timesfm-rust
             quilt-rust                              |
@@ -233,7 +233,7 @@ are the invariants.
 
 The polyformalism is the stress test: the same cell shape in 5
 languages (C, Rust, Python, GDScript, GDScript + Rust no_std for
-time.cell). The cutting-edge adoptions are the frontier: PROOF,
+time.cell). The specialized cell kinds are the frontier: PROOF,
 ROUTE, CRDT, WORLD, TIME. The substrates are the implementation
 details.
 
