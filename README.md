@@ -118,24 +118,69 @@ VIEW purity, TICK monotonicity, FORGET completeness) hold across all 11.
 - [`JEPA.md`](JEPA.md) — how `time.cell` composes with the JEPA family
 - [`temporal.py`](temporal.py) — the 10-capability reasoner
 - [`visualizer/index.html`](visualizer/index.html) — interactive cell-graph explorer (no build)
+- [`paper_trading/`](paper_trading/) — end-to-end paper-trading agent: forecast → decide → execute → settle → calibrate
+- [`robotics/`](robotics/) — robotics-shaped cells (SensorCell, ActionCell) and a 2-DOF pick-and-place demo
+- [`notebooks/paper_trading.ipynb`](notebooks/paper_trading.ipynb) — interactive walkthrough of the paper trader with charts
 - [`examples/`](examples/) — 8 runnable examples
 - [`tests/test_quilt_cell.py`](tests/test_quilt_cell.py) — 49 conformance tests
 - [`tests/test_temporal.py`](tests/test_temporal.py) — 49 temporal-reasoner tests
-- [Quilt canon](https://github.com/SuperInstance/AI-Writings) — 398 papers
+- [`tests/test_paper_trader.py`](tests/test_paper_trader.py) — 17 paper-trader tests
+- [`tests/test_robotics.py`](tests/test_robotics.py) — 18 robotics tests
+- [Quilt canon](https://github.com/SuperInstance/AI-Writings) — 401 papers
 - [Quilt wiki](https://github.com/SuperInstance/quilt-wiki-2126) — 38 entries
 - [Quilt architecture](ARCHITECTURE.md) — the single document for "what is Quilt"
 
 ## Run the tests
 
 ```bash
-python3 tests/test_quilt_cell.py     # 49 tests
-python3 tests/test_temporal.py       # 49 tests
+python3 tests/test_quilt_cell.py     # 49 tests — cell conformance
+python3 tests/test_temporal.py       # 49 tests — temporal-reasoner conformance
+python3 tests/test_paper_trader.py  # 17 tests — paper-trading agent
+python3 tests/test_robotics.py      # 18 tests — robotics cells + 2-DOF arm
 python3 examples/01_temperature.py  # univariate, 365d → 30d
 python3 examples/02_stock.py        # univariate with covariate
 python3 examples/03_demand.py       # 3-channel multivariate
 python3 examples/04_anomaly.py      # 90% CI as anomaly band
 python3 examples/05_multivariate.py # 3 sensors + maintenance covariate
+
+# Run the paper trader end-to-end
+python3 -m paper_trading --steps 500 --shock earnings_beat
 ```
+
+## Applications
+
+### Paper trading
+
+`paper_trading/` is a complete agent that:
+  1. Streams a price series (synthetic GBM by default; pluggable for real feeds)
+  2. Binds the rolling history to a `TimeCell`
+  3. Forecasts the next N steps with `forecast_trend()` (or real TimesFM 3.0)
+  4. Decides buy / sell / hold via `TradingDecisionSupport`
+  5. Executes on a `Portfolio` with position caps
+  6. Records the actual outcome when the horizon elapses
+  7. Updates the calibration score in the `AgentMemory`
+
+Every trade is addressable via a `quf://forecast/{source}/{horizon}/v{N}/{id}`
+URI, so trade logs from multiple agents can be CRDT-merged.
+
+### Robotics
+
+`robotics/` is the robotics-shaped interface. The cell model applies
+to a sensor stream the same way it applies to a price stream:
+  - **`SensorCell`** — context is a multivariate sensor stream
+    (joint angles, IMU, force, vision features). Forecast is the
+    next sensor state. This is the robotics equivalent of
+    `time.cell`; the cell shape is identical.
+  - **`ActionCell`** — context is a target trajectory. Forecast
+    is the planned motion.
+  - **`PickAndPlaceDemo`** — a 2-DOF arm with analytical
+    inverse kinematics. Runs through a `home → pick → place` cycle
+    using the cell model as the control loop.
+
+The cell shape is preserved across applications. A real
+implementation would use a JEPA-style latent dynamics model in
+place of the linear extrapolation; see `JEPA.md` for the
+synergy discussion.
 
 ## Contributing
 

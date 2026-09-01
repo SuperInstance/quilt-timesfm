@@ -299,6 +299,79 @@ class TimeCell:
         self.n_forecast += 1
         return 0
 
+    def forecast_trend(self) -> int:
+        """Trend-aware synthetic forecast: continues the last value with drift + noise.
+
+        This is a second synthetic path, distinct from _forecast_synthetic.
+        Where _forecast_synthetic returns a pure FNV-1a-derived value in
+        -50..+50, forecast_trend returns a forecast that *looks like* a
+        continuation of the input series — last_value + drift * t + noise.
+
+        Useful for:
+          - Paper-trading demos (a non-trend forecast can't be traded)
+          - Agent simulations (where the agent needs a usable signal)
+          - Backtests (so the forecast isn't noise that the agent can't
+            differentiate from the actual)
+
+        Returns 0 on success, -1 on bad input. The point forecast and
+        9 quantiles are stored in self.forecast, just like _forecast_synthetic.
+        """
+        if self.context is None or self.horizon == 0:
+            return -1
+        H = self.horizon
+        V = self.n_variates
+        if V == 0:
+            return -1
+        # Estimate drift from the last N values per variate
+        N = min(32, self.context_len)
+        if N < 2:
+            return self._forecast_synthetic()
+        recent = self.context[-N:, :]  # [N, V]
+        x = np.arange(N, dtype=np.float64)
+        x_mean = (N - 1) / 2.0
+        y_mean = recent.mean(axis=0)
+        # Drift = slope of the recent line per variate
+        num = (x[:, None] * (recent - y_mean[None, :])).sum(axis=0)
+        den = ((x - x_mean) ** 2).sum()
+        if den == 0:
+            return self._forecast_synthetic()
+        drift = num / den  # [V]
+        last_value = recent[-1, :]  # [V]
+        # Volatility (per variate)
+        vol = recent.std(axis=0) + 1e-6  # [V]
+        # Build a [H, V] forecast: last_value + drift*t + FNV-seeded noise
+        # FNV-1a uint64 multiplications wrap mod 2^64 by definition; the
+        # warning is noise. Mask it in this method.
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            h0 = fnv1a64_ndarray(self.context)
+            v_arr = np.arange(V, dtype=np.uint64)
+            t_arr = np.arange(H, dtype=np.uint64)
+            h_v = ((h0 * np.uint64(FNV_PRIME)) ^ (v_arr * np.uint64(FNV_SLICE_MUL))) & np.uint64(0xFFFFFFFFFFFFFFFF)
+            h_vt = ((h_v[:, None] * np.uint64(FNV_PRIME)) ^ t_arr[None, :]) & np.uint64(0xFFFFFFFFFFFFFFFF)
+            # Convert to int32 first (sign-extended), then to float64.
+            # The previous code did h32.astype(np.float64) which is a
+            # uint64 -> float64 cast that overflows. Casting to int32
+            # first (via view, not arithmetic) keeps the magnitude
+            # bounded to 2^31.
+            h32 = (h_vt & np.uint64(0xFFFFFFFF)).astype(np.int32).astype(np.float64)
+        noise = (h32 / float(1 << 30)).T  # [H, V] in [-2, +2]
+        t_h = np.arange(H, dtype=np.float64)[:, None]  # [H, 1]
+        point = last_value[None, :] + drift[None, :] * t_h + vol[None, :] * noise
+        # 9 quantiles: median at q=0.5 (index 4), offset by ±n*vol_per_step
+        # where vol_per_step is the empirical one-step std.
+        # This gives a 90% CI that ~matches the actuals' distribution.
+        q_offsets = (np.arange(9) - 4) * 0.5  # q0 at -2*vol_step, q8 at +2*vol_step
+        step_vol = (recent[1:] - recent[:-1]).std(axis=0) + 1e-6  # [V]
+        quantiles = point[None, :, :] + (step_vol[None, None, :] * q_offsets[:, None, None])
+        self.forecast = Forecast(
+            point=point, quantiles=quantiles,
+            model_version=self.model_version, model_variant=self.model_variant,
+        )
+        self.n_forecast += 1
+        return 0
+
     def _forecast_synthetic(self) -> int:
         """Synthetic forecast (no model needed). Mirrors the C port.
 

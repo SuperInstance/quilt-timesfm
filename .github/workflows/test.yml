@@ -32,6 +32,10 @@ jobs:
         run: python3 tests/test_quilt_cell.py
       - name: Run temporal reasoner tests
         run: python3 tests/test_temporal.py
+      - name: Run paper-trader tests
+        run: python3 tests/test_paper_trader.py
+      - name: Run robotics tests
+        run: python3 tests/test_robotics.py
       - name: Verify the polyformalism bit-exact claim
         run: |
           python3 -c "

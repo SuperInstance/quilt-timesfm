@@ -532,8 +532,17 @@ class AgentMemory:
 
     def get_by_uri(self, uri: str) -> Optional[ForecastObject]:
         if uri.startswith("quf://forecast/"):
-            fid = uri[len("quf://forecast/"):]
-            return self._store.get(fid)
+            # The URI format is quf://forecast/{source}/{horizon}/v{N}/{id}
+            # (e.g. quf://forecast/sales/16/v1/abc123). The id is the
+            # last path segment.
+            tail = uri[len("quf://forecast/"):]
+            # Strip the {source}/{horizon}/v{N}/ prefix
+            parts = tail.split("/")
+            if len(parts) >= 4:
+                fid = parts[-1]
+                return self._store.get(fid)
+            # Fallback for legacy URIs (just the id)
+            return self._store.get(tail)
         return None
 
     def history(self, source: str) -> List[ForecastObject]:
@@ -769,15 +778,30 @@ class TemporalReasoner:
         source: str,
         horizon: int = 16,
         seed: int = 0,
+        method: str = "default",
     ) -> ForecastObject:
         """Produce a ForecastObject from the cell's current context.
 
         The cell must have a context (bind_context already called).
+
+        Parameters
+        ----------
+        method : str
+            - "default": use the cell's forecast_() — real TimesFM if
+              available, synthetic FNV-1a otherwise.
+            - "trend": use the cell's forecast_trend() — synthetic
+              trend-aware forecast (last_value + drift * t + noise).
+              Useful for paper-trading demos and agent simulations
+              where the forecast must be a continuation of the input,
+              not a pure FNV-1a value.
         """
         if self.cell.context is None or self.cell.context_len == 0:
             raise ValueError("cell has no context; call cell.bind_context first")
         self.cell.set_horizon(horizon)
-        self.cell.forecast_()
+        if method == "trend":
+            self.cell.forecast_trend()
+        else:
+            self.cell.forecast_()
         # Build the forecast object
         point = self.cell.read_point(0).tolist()
         uncertainty = [
@@ -823,8 +847,10 @@ class TemporalReasoner:
         fo.important_covariates = explanation["important_covariates"]
         fo.uncertainty_sources = explanation["uncertainty_sources"]
         fo.prediction_rationale = explanation["prediction_rationale"]
-        # Set the URI
-        fo.uri = make_quf_uri(source, horizon, fo.version)
+        # Set the URI — include the id so each forecast has a unique
+        # CRDT-friendly key. Source/horizon/version go in the prefix
+        # for human-readable addressing.
+        fo.uri = f"quf://forecast/{source}/{horizon}/v{fo.version}/{fo.id}"
         # Store in memory
         self.memory.put(fo)
         return fo
