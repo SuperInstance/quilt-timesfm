@@ -155,6 +155,11 @@ class TimeCell:
         return TimeOp.COUNT
 
     @staticmethod
+    def opcode_count() -> int:
+        """The 11-opcode count for the Quilt op set (5+1+1+1+1+1+1)."""
+        return 11
+
+    @staticmethod
     def op_name(op: int) -> str:
         return TIME_OP_NAMES.get(op, "?")
 
