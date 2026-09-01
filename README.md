@@ -23,7 +23,7 @@ import numpy as np
 cell = TimeCell()
 cell.bind_context(np.sin(np.linspace(0, 8 * np.pi, 128)))  # 128 points of history
 cell.set_horizon(16)
-cell.forecast_()                                            # calls TimesFM 3.0
+cell.forecast_()                                            # substrate: TimesFM 3.0
 
 point = cell.read_point(0)        # shape (16,), the median forecast
 q10   = cell.read_quantile(0.1, 0)  # 10th percentile
@@ -51,13 +51,10 @@ substrate (the model that does the work) is the only thing that varies.
 
 ## Why
 
-If you build agents that act on the world, they need to forecast. If you
-forecast, you need uncertainty. If you have uncertainty, you need to
-quantify it. If you quantify it, you need a 90% prediction interval and
-a calibration score. If you have those, you can write
-`recommend_actions()` and have something an agent can actually use.
-
-`temporal.py` is a 10-capability wrapper that does this:
+Agents that act on the world need to forecast, and useful forecasts
+come with a 90% prediction interval, a calibration score, and
+recommendable actions. `temporal.py` is a 10-capability wrapper that
+turns the `time.cell` into an agent-native primitive:
 
 1. **ForecastObject** — first-class state with id, source, horizon, confidence, version, URI
 2. **Scenarios** — optimistic, baseline, pessimistic
