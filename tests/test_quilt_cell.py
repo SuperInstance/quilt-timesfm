@@ -25,6 +25,7 @@ from quilt_cell import (
 
 PASSED = 0
 FAILED = 0
+SKIPPED = 0
 
 
 def check(cond, msg):
@@ -35,6 +36,18 @@ def check(cond, msg):
     else:
         FAILED += 1
         print(f"  FAIL {msg}")
+
+
+def skip(msg):
+    """Record a test as skipped. Does not count as failure.
+
+    Use this when a test depends on an optional dependency (e.g. torch
+    for the real TimesFM 3.0 binding) that is not available in the
+    current environment.
+    """
+    global SKIPPED
+    SKIPPED += 1
+    print(f"  SKIP {msg}")
 
 
 def test_time_kind_name():
@@ -171,8 +184,8 @@ def test_time_fnv1a_bit_exact():
 
 def test_time_polyformalism_shape():
     print("== test_time_polyformalism_shape ==")
-    # 5 originals + FORGET + 4 cutting-edge + TIME = 11 opcodes.
-    check(5 + 1 + 1 + 1 + 1 + 1 + 1 == 11, "5+1+1+1+1+1+1 = 11 opcodes (with TIME)")
+    # 5 originals + FORGET + 5 specialized (PROOF, ROUTE, CRDT, WORLD, TIME) = 11 opcodes.
+    check(5 + 1 + 5 == 11, "5+1+5 = 11 opcodes (5 originals + FORGET + 5 specialized)")
     # The cell model is the same in C, Python, (eventually) Rust.
     # The substrate binding is the only thing that varies.
 
@@ -186,7 +199,10 @@ def test_time_real_timesfm_binding():
         _sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         from src.timesfm3 import TimesFM3Forecaster  # noqa: F401
     except Exception as e:
-        check(False, f"real TimesFM not importable: {e}")
+        # Skip, don't fail. The synthetic path is the polyformalism
+        # conformance target; the real path is an opt-in substrate
+        # binding that requires an 800MB checkpoint.
+        skip(f"real TimesFM not importable: {e}")
         return
     cell = TimeCell()
     # Small sine wave context.
@@ -222,7 +238,7 @@ def main():
     test_time_fnv1a_bit_exact()
     test_time_polyformalism_shape()
     test_time_real_timesfm_binding()
-    print(f"\n=== {PASSED} passed, {FAILED} failed ===")
+    print(f"\n=== {PASSED} passed, {FAILED} failed, {SKIPPED} skipped ===")
     return 0 if FAILED == 0 else 1
 
 
