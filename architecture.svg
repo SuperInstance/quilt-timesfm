@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" font-family="-apple-system, sans-serif">
+  <defs>
+    <style>
+      .cell { fill: #161b22; stroke: #30363d; stroke-width: 1.5; }
+      .cell-active { fill: #1f2937; stroke: #d29922; stroke-width: 2.5; }
+      .cell-time { fill: #2d1810; stroke: #d29922; stroke-width: 2; }
+      .cell-jepa { fill: #2d1020; stroke: #a371f7; stroke-width: 2; }
+      .label { fill: #c9d1d9; font-size: 12px; }
+      .label-bold { fill: #c9d1d9; font-size: 14px; font-weight: 600; }
+      .sub { fill: #8b949e; font-size: 10px; }
+      .arrow { stroke: #d29922; stroke-width: 1.5; fill: none; marker-end: url(#arrowhead); }
+      .arrow-jepa { stroke: #a371f7; stroke-width: 1.5; fill: none; marker-end: url(#arrowhead-jepa); }
+      .arrow-dim { stroke: #8b949e; stroke-width: 1; fill: none; marker-end: url(#arrowhead-dim); }
+      .title { fill: #d29922; font-size: 22px; font-weight: 700; }
+      .subtitle { fill: #8b949e; font-size: 12px; }
+      .section-title { fill: #58a6ff; font-size: 14px; font-weight: 600; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3"
+            orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#d29922" />
+    </marker>
+    <marker id="arrowhead-jepa" markerWidth="10" markerHeight="10" refX="9" refY="3"
+            orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#a371f7" />
+    </marker>
+    <marker id="arrowhead-dim" markerWidth="10" markerHeight="10" refX="9" refY="3"
+            orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#8b949e" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="800" fill="#0d1117" />
+
+  <!-- Title -->
+  <text x="40" y="40" class="title">Quilt-TimesFM × JEPA: The Agent-Native World Model</text>
+  <text x="40" y="62" class="subtitle">Future-state memory primitive + world model = perception-reasoning-action loop</text>
+
+  <!-- LEFT: JEPA perception -->
+  <g transform="translate(40, 100)">
+    <text x="0" y="0" class="section-title">PERCEPTION (V-JEPA 2)</text>
+    <text x="0" y="20" class="sub">World → embeddings</text>
+
+    <!-- World box -->
+    <rect x="0" y="40" width="240" height="100" rx="8" class="cell-jepa" />
+    <text x="120" y="65" text-anchor="middle" class="label-bold">World</text>
+    <text x="120" y="85" text-anchor="middle" class="sub">video, audio, sensors</text>
+    <text x="120" y="105" text-anchor="middle" class="sub">T = 8 seconds at 30 fps</text>
+    <text x="120" y="125" text-anchor="middle" class="sub">240 frames, 768-dim</text>
+
+    <!-- V-JEPA 2 box -->
+    <rect x="0" y="170" width="240" height="80" rx="8" class="cell-jepa" />
+    <text x="120" y="195" text-anchor="middle" class="label-bold">V-JEPA 2</text>
+    <text x="120" y="215" text-anchor="middle" class="sub">1.2B parameters</text>
+    <text x="120" y="230" text-anchor="middle" class="sub">predicts in embedding space</text>
+
+    <!-- Embedding stream -->
+    <rect x="0" y="280" width="240" height="80" rx="8" class="cell-jepa" />
+    <text x="120" y="305" text-anchor="middle" class="label-bold">Embedding stream</text>
+    <text x="120" y="325" text-anchor="middle" class="sub">240 × 768 = 184,320 dims</text>
+    <text x="120" y="340" text-anchor="middle" class="sub">multivariate time series</text>
+  </g>
+
+  <!-- MIDDLE: Time cell (temporal reasoning) -->
+  <g transform="translate(440, 100)">
+    <text x="0" y="0" class="section-title">REASONING (time.cell)</text>
+    <text x="0" y="20" class="sub">Embeddings → state → forecast</text>
+
+    <!-- Bind context -->
+    <rect x="0" y="40" width="320" height="60" rx="8" class="cell-time" />
+    <text x="160" y="65" text-anchor="middle" class="label-bold">BIND_CONTEXT</text>
+    <text x="160" y="82" text-anchor="middle" class="sub">240 × 768 multivariate time series</text>
+
+    <!-- Forecast -->
+    <rect x="0" y="120" width="320" height="60" rx="8" class="cell-time" />
+    <text x="160" y="145" text-anchor="middle" class="label-bold">FORECAST</text>
+    <text x="160" y="162" text-anchor="middle" class="sub">predict next 8 seconds + 9 quantiles</text>
+
+    <!-- ForecastObject -->
+    <rect x="0" y="200" width="320" height="160" rx="8" class="cell-active" />
+    <text x="160" y="225" text-anchor="middle" class="label-bold">ForecastObject</text>
+    <text x="20" y="250" class="sub">• id (SHA-256, 16 bytes)</text>
+    <text x="20" y="268" class="sub">• source, timestamp, horizon</text>
+    <text x="20" y="286" class="sub">• confidence, trend, forecast</text>
+    <text x="20" y="304" class="sub">• 9 quantile bands</text>
+    <text x="20" y="322" class="sub">• explainability (drivers, rationale)</text>
+    <text x="20" y="340" class="sub">• URI: quf://forecast/{source}/{horizon}/v{N}</text>
+  </g>
+
+  <!-- RIGHT: Agent (action) -->
+  <g transform="translate(880, 100)">
+    <text x="0" y="0" class="section-title">ACTION (Agent)</text>
+    <text x="0" y="20" class="sub">Forecast → decision</text>
+
+    <!-- Counterfactual -->
+    <rect x="0" y="40" width="280" height="60" rx="8" class="cell" />
+    <text x="140" y="65" text-anchor="middle" class="label-bold">Counterfactual</text>
+    <text x="140" y="82" text-anchor="middle" class="sub">"what if X changes?"</text>
+
+    <!-- Memory -->
+    <rect x="0" y="120" width="280" height="60" rx="8" class="cell" />
+    <text x="140" y="145" text-anchor="middle" class="label-bold">Memory</text>
+    <text x="140" y="162" text-anchor="middle" class="sub">past forecasts + outcomes + learning</text>
+
+    <!-- Decision -->
+    <rect x="0" y="200" width="280" height="80" rx="8" class="cell" />
+    <text x="140" y="225" text-anchor="middle" class="label-bold">Decision</text>
+    <text x="140" y="245" text-anchor="middle" class="sub">action = argmax E[U(action | forecast)]</text>
+    <text x="140" y="265" text-anchor="middle" class="sub">+ expected benefit + confidence</text>
+
+    <!-- Agent -->
+    <rect x="0" y="300" width="280" height="60" rx="8" class="cell-active" />
+    <text x="140" y="325" text-anchor="middle" class="label-bold">Agent</text>
+    <text x="140" y="342" text-anchor="middle" class="sub">executor + learner + reasoner</text>
+  </g>
+
+  <!-- BOTTOM: 10 capabilities of the future-state memory -->
+  <g transform="translate(40, 480)">
+    <text x="0" y="0" class="section-title">The 10 capabilities of the future-state memory primitive</text>
+
+    <!-- 5 cards per row -->
+    <g transform="translate(0, 20)">
+      <rect x="0" y="0" width="220" height="60" rx="6" class="cell" />
+      <text x="110" y="22" text-anchor="middle" class="label-bold">1. ForecastObject</text>
+      <text x="110" y="40" text-anchor="middle" class="sub">first-class state</text>
+      <text x="110" y="55" text-anchor="middle" class="sub">serializable, mergeable</text>
+    </g>
+    <g transform="translate(232, 20)">
+      <rect x="0" y="0" width="220" height="60" rx="6" class="cell" />
+      <text x="110" y="22" text-anchor="middle" class="label-bold">2. Scenarios</text>
+      <text x="110" y="40" text-anchor="middle" class="sub">optimistic/baseline/pessimistic</text>
+      <text x="110" y="55" text-anchor="middle" class="sub">with assumptions + probabilities</text>
+    </g>
+    <g transform="translate(464, 20)">
+      <rect x="0" y="0" width="220" height="60" rx="6" class="cell" />
+      <text x="110" y="22" text-anchor="middle" class="label-bold">3. Counterfactuals</text>
+      <text x="110" y="40" text-anchor="middle" class="sub">"what if X changes?"</text>
+      <text x="110" y="55" text-anchor="middle" class="sub">impact + confidence bounds</text>
+    </g>
+    <g transform="translate(696, 20)">
+      <rect x="0" y="0" width="220" height="60" rx="6" class="cell" />
+      <text x="110" y="22" text-anchor="middle" class="label-bold">4. Explainability</text>
+      <text x="110" y="40" text-anchor="middle" class="sub">drivers, covariates, rationale</text>
+      <text x="110" y="55" text-anchor="middle" class="sub">"why was this predicted?"</text>
+    </g>
+    <g transform="translate(928, 20)">
+      <rect x="0" y="0" width="220" height="60" rx="6" class="cell" />
+      <text x="110" y="22" text-anchor="middle" class="label-bold">5. Lifecycle</text>
+      <text x="110" y="40" text-anchor="middle" class="sub">prediction → actual → error</text>
+      <text x="110" y="55" text-anchor="middle" class="sub">continuous self-evaluation</text>
+    </g>
+
+    <g transform="translate(0, 100)">
+      <rect x="0" y="0" width="220" height="60" rx="6" class="cell" />
+      <text x="110" y="22" text-anchor="middle" class="label-bold">6. Agent Memory</text>
+      <text x="110" y="40" text-anchor="middle" class="sub">durable, retrievable</text>
+      <text x="110" y="55" text-anchor="middle" class="sub">learn from history</text>
+    </g>
+    <g transform="translate(232, 100)">
+      <rect x="0" y="0" width="220" height="60" rx="6" class="cell" />
+      <text x="110" y="22" text-anchor="middle" class="label-bold">7. Decision Support</text>
+      <text x="110" y="40" text-anchor="middle" class="sub">recommend_actions()</text>
+      <text x="110" y="55" text-anchor="middle" class="sub">expected benefit + confidence</text>
+    </g>
+    <g transform="translate(464, 100)">
+      <rect x="0" y="0" width="220" height="60" rx="6" class="cell" />
+      <text x="110" y="22" text-anchor="middle" class="label-bold">8. quf:// URI</text>
+      <text x="110" y="40" text-anchor="middle" class="sub">addressable semantic objects</text>
+      <text x="110" y="55" text-anchor="middle" class="sub">provenance + version + merge</text>
+    </g>
+    <g transform="translate(696, 100)">
+      <rect x="0" y="0" width="220" height="60" rx="6" class="cell" />
+      <text x="110" y="22" text-anchor="middle" class="label-bold">9. Metrics</text>
+      <text x="110" y="40" text-anchor="middle" class="sub">MAE, RMSE, MAPE, calibration</text>
+      <text x="110" y="55" text-anchor="middle" class="sub">+ agent utility (1st-class)</text>
+    </g>
+    <g transform="translate(928, 100)">
+      <rect x="0" y="0" width="220" height="60" rx="6" class="cell" />
+      <text x="110" y="22" text-anchor="middle" class="label-bold">10. CRDT</text>
+      <text x="110" y="40" text-anchor="middle" class="sub">mergeable, versionable</text>
+      <text x="110" y="55" text-anchor="middle" class="sub">multi-agent convergence</text>
+    </g>
+  </g>
+
+  <!-- Arrows: V-JEPA → TimeCell -->
+  <path d="M 280,320 L 440,70" class="arrow-jepa" />
+  <text x="350" y="190" class="sub" fill="#a371f7">embeddings (240 × 768)</text>
+
+  <!-- Arrows: TimeCell → Agent -->
+  <path d="M 760,280 L 880,70" class="arrow" />
+  <text x="780" y="190" class="sub" fill="#d29922">ForecastObject</text>
+
+  <!-- Loop: Agent → World -->
+  <path d="M 880,330 Q 600,420 280,200 Q 200,180 200,150" class="arrow-dim" />
+  <text x="600" y="430" text-anchor="middle" class="sub">action → world changes → loop repeats</text>
+
+  <!-- Footer -->
+  <text x="40" y="780" class="sub">The Quilt × JEPA world model: not just a predictor, an active reasoner.</text>
+  <text x="40" y="795" class="sub">Forecasts are not outputs. Forecasts are durable semantic objects that agents exchange, refine, merge, and learn from over time.</text>
+</svg>

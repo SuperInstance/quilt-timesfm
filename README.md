@@ -1,9 +1,12 @@
 # quilt-timesfm
 
-> **A time-series foundation model as a Quilt cell.**
+> **A future-state memory primitive for agents, not just a forecasting wrapper.**
 > Google's [TimesFM 3.0](https://github.com/google-research/timesfm) — the SOTA on
 > fev-bench, TIME, and GIFT-Eval — wrapped as a first-class cell kind in the
 > [Quilt](https://github.com/SuperInstance) cellular-architecture framework.
+> **Plus**: 10 capabilities for agent-native temporal reasoning: forecast
+> objects, scenarios, counterfactuals, explainability, lifecycle, memory,
+> decision support, semantic URI, evaluation metrics, and CRDT merging.
 
 **The 5th cutting-edge adoption.** The Quilt opcodes are now **11**:
 
@@ -11,6 +14,11 @@
 BIND / LINK / EFFECT / VIEW / TICK / FORGET     (5 originals)
 PROOF / ROUTE / CRDT / WORLD / TIME             (5 cutting-edge)
 ```
+
+**The pivot**: forecasts are not outputs. Forecasts are durable semantic
+objects that agents can exchange, refine, challenge, merge, and learn from
+over time. See `temporal.py` and the [TemporalReasoner](#the-temporal-reasoner)
+section below.
 
 This README teaches the Quilt cell model from scratch, shows the `time.cell`
 kind in detail, walks the polyformalism (the same cell in C, Rust, and Python),
@@ -26,14 +34,16 @@ and ends with the benchmarks. If you've never seen Quilt, start at the top.
 4. [The `time.cell` kind](#the-timecell-kind)
 5. [Quick start](#quick-start)
 6. [The polyformalism](#the-polyformalism)
-7. [Interactive visualizer](#interactive-visualizer)
-8. [Examples](#examples)
-9. [The benchmarks](#the-benchmarks)
-10. [The math](#the-math)
-11. [The other 4 cutting-edge adoptions](#the-other-4-cutting-edge-adoptions)
-12. [The Quilt ecosystem](#the-quilt-ecosystem)
-13. [Contributing](#contributing)
-14. [License & credits](#license--credits)
+7. [The Temporal Reasoner (NEW)](#the-temporal-reasoner)
+8. [The Quilt × JEPA Synergy (NEW)](#the-quilt--jepa-synergy)
+9. [Interactive visualizer](#interactive-visualizer)
+10. [Examples](#examples)
+11. [The benchmarks](#the-benchmarks)
+12. [The math](#the-math)
+13. [The other 4 cutting-edge adoptions](#the-other-4-cutting-edge-adoptions)
+14. [The Quilt ecosystem](#the-quilt-ecosystem)
+15. [Contributing](#contributing)
+16. [License & credits](#license--credits)
 
 ---
 
@@ -274,6 +284,114 @@ the kernel-friendly stub; the Python port calls the real model. A Rust
 port (no_std, for embedded) and a Zig port (comptime, for bare-metal) are
 in development. See [`docs/POLYFORMALISM.md`](docs/POLYFORMALISM.md) for
 the full language tour.
+
+---
+
+## The Temporal Reasoner
+
+**The pivot**: forecasts are not outputs. Forecasts are durable semantic
+objects that agents can exchange, refine, challenge, merge, and learn from
+over time.
+
+The `TemporalReasoner` class (in `temporal.py`) is the unified entry point.
+It combines 10 capabilities into a single primitive:
+
+| # | Capability | What it does |
+|---|---|---|
+| 1 | **ForecastObject** | First-class state: id, source, timestamp, horizon, confidence, trend, forecast, uncertainty, provenance, version, URI |
+| 2 | **Scenarios** | Multiple futures: optimistic, baseline, pessimistic (with assumptions + probabilities) |
+| 3 | **Counterfactuals** | "What if X changes?" with impact + confidence bounds |
+| 4 | **Explainability** | Major drivers, important covariates, uncertainty sources, prediction rationale |
+| 5 | **Lifecycle** | Record actuals, compute prediction error and calibration |
+| 6 | **Agent memory** | Durable store of forecasts; learn from history |
+| 7 | **Decision support** | recommend_actions() with expected benefit + confidence |
+| 8 | **quf:// URI** | Addressable: quf://forecast/{source}/{horizon}/v{version} |
+| 9 | **Metrics** | MAE, RMSE, MAPE, calibration, pinball loss, agent utility |
+| 10 | **CRDT** | Mergeable, versionable, comparable across agents |
+
+### Quick example
+
+```python
+from quilt_cell import TimeCell
+from temporal import TemporalReasoner
+import numpy as np
+
+cell = TimeCell()
+cell.bind_context(np.sin(np.linspace(0, 8 * np.pi, 128)))
+tr = TemporalReasoner(cell)
+
+# 1. Forecast → produces a ForecastObject (stored in memory)
+fo = tr.forecast_object("sales", horizon=8)
+print(fo.uri)             # quf://forecast/sales/8/v1
+print(fo.prediction_rationale)  # "The forecast is rising over a horizon of 8 steps..."
+
+# 2. Scenarios → 3 futures
+scs = tr.scenarios(3)     # optimistic, baseline, pessimistic
+
+# 3. Counterfactual → "what if X changes?"
+cf = tr.counterfactual("context_mean", 0.20)
+# → {"impact_total": 0.50, "ci_low": 0.12, "ci_high": 0.56, "confidence": 0.80}
+
+# 4. Record outcome → update error/calibration
+fo_updated = tr.record_outcome(fo, [v + 0.1 for v in fo.forecast])
+# → fo_updated.prediction_error = 0.1
+
+# 5. Recommend actions
+actions = tr.recommend_actions(fo_updated)
+# → [{"action": "increase capacity", "expected_benefit": 5.2, "confidence": 0.8, ...}]
+
+# 6. Learn from history
+learn = tr.learn_from_history("sales")
+# → {"mean_error": 0.12, "mean_calibration": 0.91, "error_trend": "improving", ...}
+```
+
+### The 49 tests
+
+```bash
+$ python3 tests/test_temporal.py
+=== quilt-timesfm temporal: 49 tests ===
+=== 49 passed, 0 failed ===
+```
+
+The tests cover all 10 capabilities + the polyformalism claim (CRDT
+commutativity, idempotence, version increment).
+
+### See also
+
+- [`temporal.py`](temporal.py): the 10-capability implementation
+- [`tests/test_temporal.py`](tests/test_temporal.py): the 49 tests
+- [`examples/07_temporal_reasoner.py`](examples/07_temporal_reasoner.py): 5 example agents
+- [`JEPA.md`](JEPA.md): the full Quilt × JEPA discussion
+- Paper F88: The Future-State Memory Pivot
+
+---
+
+## The Quilt × JEPA Synergy
+
+The Quilt `time.cell` is a **temporal primitive** for scalar and
+multivariate time series. The JEPA family (V-JEPA 2, I-JEPA, A-JEPA,
+M-JEPA) is a **world model** for high-dimensional sensory data. Together,
+they form a **perception-reasoning-action** loop for agent-native
+intelligence:
+
+```
+V-JEPA 2            Time Cell            Agent
+(perception)        (reasoning)          (action)
+
+video ──→ embedding ──→ state ──→ forecast ──→ decision
+frames     (768d)       (32B)    (9 quantiles) (action)
+```
+
+The 4 roles of the time.cell in a JEPA world model:
+
+1. **Compression of JEPA embeddings** (768-d → cell state)
+2. **Uncertainty quantification for JEPA** (9 quantiles)
+3. **Counterfactual reasoning on JEPA states** (what if?)
+4. **Memory of past predictions** (durable, addressable, learnable)
+
+The 4 use cases: robotics, autonomous driving, video understanding,
+time-series foundation models. See [`JEPA.md`](JEPA.md) for the full
+discussion.
 
 ---
 
