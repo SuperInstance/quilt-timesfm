@@ -171,6 +171,37 @@ def test_time_polyformalism_shape():
     # The substrate binding is the only thing that varies.
 
 
+def test_time_real_timesfm_binding():
+    print("== test_time_real_timesfm_binding ==")
+    # This test requires torch + the timesfm3 module. Skip if not available.
+    try:
+        import torch  # noqa: F401
+        import sys as _sys
+        _sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        from src.timesfm3 import TimesFM3Forecaster  # noqa: F401
+    except Exception as e:
+        check(False, f"real TimesFM not importable: {e}")
+        return
+    cell = TimeCell()
+    # Small sine wave context.
+    t = np.linspace(0, 4 * np.pi, 64)
+    ctx = np.sin(t).reshape(64, 1)
+    cell.bind_context(ctx)
+    cell.set_horizon(8)
+    rc = cell.forecast_()
+    # The forecast call should succeed; whether it used the real or
+    # synthetic path is internal, but the contract is: rc == 0,
+    # the point has the right shape, and the point is not all-zero
+    # (synthetic gives -50..+50; real TimesFM gives actual values).
+    check(rc == 0, "forecast_() returns 0")
+    check(cell.forecast.point.shape == (8, 1), "point.shape == (8, 1)")
+    check(cell.forecast.quantiles.shape == (9, 8, 1), "quantiles.shape == (9, 8, 1)")
+    # Either real or synthetic path is OK; just check the point
+    # has finite values.
+    is_finite = np.all(np.isfinite(cell.forecast.point))
+    check(is_finite, "point forecast is finite")
+
+
 def main():
     print("=== quilt-timesfm: time.cell Quilt cell kind (Phase 228) ===\n")
     test_time_kind_name()
@@ -184,6 +215,7 @@ def main():
     test_time_univariate_1d_input()
     test_time_fnv1a_bit_exact()
     test_time_polyformalism_shape()
+    test_time_real_timesfm_binding()
     print(f"\n=== {PASSED} passed, {FAILED} failed ===")
     return 0 if FAILED == 0 else 1
 

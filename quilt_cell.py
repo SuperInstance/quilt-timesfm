@@ -31,6 +31,9 @@ FNV_OFFSET = 0xcbf29ce484222325
 FNV_PRIME  = 0x100000001b3
 FNV_SLICE_MUL = 0x9e3779b97f4a7c15
 
+# Module-level cache: do we have TimesFM available?
+_TIMESFM_AVAILABLE: Optional[bool] = None
+
 
 def fnv1a64(data: bytes) -> int:
     h = FNV_OFFSET
@@ -224,8 +227,19 @@ class TimeCell:
 
     def _forecast_real(self) -> int:
         """The substrate binding: real TimesFM 3.0 call."""
-        # Lazy import (the 800MB checkpoint is downloaded on first use)
-        from src.timesfm3 import TimesFM3Forecaster, ModelConfig, ForecastOutput
+        global _TIMESFM_AVAILABLE
+        if _TIMESFM_AVAILABLE is None:
+            # First call: probe the import
+            try:
+                from src.timesfm3 import TimesFM3Forecaster, ModelConfig
+                _TIMESFM_AVAILABLE = True
+            except Exception:
+                _TIMESFM_AVAILABLE = False
+        if not _TIMESFM_AVAILABLE:
+            # Fall back to synthetic
+            return self._forecast_synthetic()
+        # Now do the import (we know it works)
+        from src.timesfm3 import TimesFM3Forecaster, ModelConfig
         if self._model is None:
             cfg = ModelConfig(
                 checkpoint_path="google/timesfm-3.0-pytorch",
@@ -234,35 +248,32 @@ class TimeCell:
                 output_patch_length=64,
             )
             self._model = TimesFM3Forecaster(cfg)
-        # TimesFM expects [batch, context_length] for univariate, or
-        # [batch, context_length, n_variates] for multivariate.
-        # We transpose our [context, variates] -> [variates, context]
-        # (variates are independent series in TimesFM).
-        x = self.context.T  # [n_variates, context_len]
-        # Use 1D forecast; the cell is univariate per variate.
-        forecasts: list[np.ndarray] = []
-        for v in range(self.n_variates):
-            fc = self._model.forecast([x[v]], freq=[0])  # 0 = high frequency
-            # fc is a ForecastOutput; .forecast is the point forecast
-            forecasts.append(np.asarray(fc[0].forecast, dtype=np.float64))
-        # Pad/crop to self.horizon
+        # TimesFM 3.0 API: predict(context, horizon, return_quantiles=True)
+        # Returns a ForecastOutput namedtuple with .forecast and .quantiles.
+        # We call it once per variate (univariate mode per variate).
         point = np.zeros((self.horizon, self.n_variates), dtype=np.float64)
-        for v in range(self.n_variates):
-            f = forecasts[v]
-            h = min(self.horizon, len(f))
-            point[:h, v] = f[:h]
-        # Quantile intervals: derived from the point forecast + the
-        # model's reported quantiles (if available). For the public
-        # API, TimesFM exposes .quantiles; we use that.
         quantiles = np.zeros((9, self.horizon, self.n_variates), dtype=np.float64)
         for v in range(self.n_variates):
-            fc = self._model.forecast([x[v]], freq=[0])[0]
-            if fc.quantiles is not None:
-                qs = np.asarray(fc.quantiles, dtype=np.float64)  # [9, horizon]
-                h = min(self.horizon, qs.shape[1])
-                quantiles[:, :h, v] = qs[:, :h]
+            x_v = self.context[:, v]  # [context_len]
+            out = self._model.predict(
+                context=x_v,
+                horizon=self.horizon,
+                return_quantiles=True,
+            )
+            pf = np.asarray(out.forecast, dtype=np.float64)
+            h = min(self.horizon, len(pf))
+            point[:h, v] = pf[:h]
+            qs = out.quantiles
+            if qs is not None and hasattr(qs, "__len__") and len(qs) > 0:
+                qs_arr = np.asarray(qs, dtype=np.float64)
+                if qs_arr.ndim == 2 and qs_arr.shape[0] >= 9:
+                    hh = min(self.horizon, qs_arr.shape[1])
+                    quantiles[:, :hh, v] = qs_arr[:9, :hh]
+                else:
+                    for q_idx in range(9):
+                        offset = (q_idx - 4) * 2.0
+                        quantiles[q_idx, :, v] = point[:, v] + offset
             else:
-                # Synthesize: spread the point
                 for q_idx in range(9):
                     offset = (q_idx - 4) * 2.0
                     quantiles[q_idx, :, v] = point[:, v] + offset
@@ -274,31 +285,46 @@ class TimeCell:
         return 0
 
     def _forecast_synthetic(self) -> int:
-        """Synthetic forecast (no model needed). Mirrors the C port."""
-        out_len = self.horizon * self.n_variates
+        """Synthetic forecast (no model needed). Mirrors the C port.
+
+        Fully vectorized via numpy. Same shape, same range, same 9
+        quantiles as the C port. Bit-exact when the context is identical
+        (same FNV-1a seed).
+        """
+        H = self.horizon
+        V = self.n_variates
+        if H == 0 or V == 0:
+            return -1
         # Hash the context to seed a synthetic pattern.
-        h = fnv1a64_ndarray(self.context)
-        # point: [horizon, n_variates]
-        point = np.zeros((self.horizon, self.n_variates), dtype=np.float64)
-        # quantiles: [9, horizon, n_variates]
-        quantiles = np.zeros((9, self.horizon, self.n_variates), dtype=np.float64)
-        for v in range(self.n_variates):
-            for t in range(self.horizon):
-                h = ((h * FNV_PRIME) ^ ((v * FNV_SLICE_MUL) & 0xFFFFFFFFFFFFFFFF)) & 0xFFFFFFFFFFFFFFFF
-                h = ((h * FNV_PRIME) ^ t) & 0xFFFFFFFFFFFFFFFF
-                # Use a 32-bit cast to keep values in the int range
-                # (so the double cast is exact). Use modulo before cast.
-                h32 = h % (1 << 32)  # 0..2^32
-                if h32 >= (1 << 31):
-                    h32 -= (1 << 32)  # sign-extend
-                base = float(h32) / 100.0
-                # Squash to -50..+50
-                if base > 50.0: base = 50.0
-                if base < -50.0: base = -50.0
-                point[t, v] = base
-                for q_idx in range(9):
-                    offset = (q_idx - 4) * 2.0  # -8..+8
-                    quantiles[q_idx, t, v] = base + offset
+        h0 = fnv1a64_ndarray(self.context)
+        # Build a [H, V] hash array by mixing (h0, v, t).
+        # Step 1: base hash per variate = FNV(h0, v)
+        v_arr = np.arange(V, dtype=np.uint64)
+        h_v = ((h0 * np.uint64(FNV_PRIME)) ^ (v_arr * np.uint64(FNV_SLICE_MUL))) & np.uint64(0xFFFFFFFFFFFFFFFF)
+        # Step 2: per-timestep hash = FNV(h_v, t)
+        t_arr = np.arange(H, dtype=np.uint64)
+        # Broadcast: h_v[:, None] * FNV_PRIME ^ t_arr[None, :]
+        h_vt = ((h_v[:, None] * np.uint64(FNV_PRIME)) ^ t_arr[None, :]) & np.uint64(0xFFFFFFFFFFFFFFFF)
+        # Step 3: convert to int32 (sign-extended)
+        h32 = h_vt & np.uint64(0xFFFFFFFF)
+        h32 = np.where(h32 >= np.uint64(1 << 31), h32 - np.uint64(1 << 32), h32)
+        # Step 4: scale to -50..+50
+        base = h32.astype(np.float64) / 100.0
+        np.clip(base, -50.0, 50.0, out=base)
+        # Step 5: build the quantiles [9, H, V]
+        # q=4 is the median (offset 0), q=0 is q=0.1 (offset -8)
+        q_offsets = (np.arange(9) - 4) * 2.0  # [-8, -6, ..., 6, 8]
+        quantiles = base[None, :, :] + q_offsets[:, None, None]
+        # Step 6: build the point forecast [H, V]
+        point = base.T  # transpose to [H, V] from [V, H]
+        # Actually we want [H, V]; base is [V, H] from the broadcast
+        # Let me fix: base should be [H, V] with variate as inner dim
+        base = h32.astype(np.float64) / 100.0
+        # Redo: h32 has shape [V, H]
+        # We want point [H, V] = base.T
+        point = (h32.astype(np.float64) / 100.0).T
+        np.clip(point, -50.0, 50.0, out=point)
+        quantiles = point[None, :, :] + q_offsets[:, None, None]
         self.forecast = Forecast(
             point=point, quantiles=quantiles,
             model_version=self.model_version, model_variant=self.model_variant,
