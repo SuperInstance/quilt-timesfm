@@ -1,11 +1,13 @@
 """
 quilt_cell.py — the `time.cell` Quilt cell kind wrapping TimesFM 3.0.
 
-The cell shape (Phase 228, 5th cutting-edge adoption):
+The cell shape:
 - Cell state: the historical time series (a 2D numpy array)
 - Cell value: the forecast (a 2D numpy array) + quantile intervals
 - Cell reads: covariates (past-only, past-and-future)
-- The 5+1+1+1+1+1+1 opcodes (now 11 with TIME) apply unchanged.
+- The 11 opcodes (5 originals + FORGET + 5 specialized) apply
+  unchanged: BIND, LINK, EFFECT, VIEW, TICK, FORGET, PROOF, ROUTE,
+  CRDT, WORLD, TIME.
 
 The substrate binding:
 - ROUTE picks the model: TimesFM 2.5 vs 3.0, PyTorch vs Flax
@@ -156,7 +158,7 @@ class TimeCell:
 
     @staticmethod
     def opcode_count() -> int:
-        """The 11-opcode count for the Quilt op set (5+1+1+1+1+1+1)."""
+        """The 11-opcode count for the Quilt op set (5+1+5)."""
         return 11
 
     @staticmethod
