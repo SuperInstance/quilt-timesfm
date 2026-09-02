@@ -25,6 +25,10 @@ from .trader import PaperTrader, Trade, Portfolio, Position
 from .data import synthetic_price_stream, GeometricBrownianMotion, EXAMPLE_SHOCKS
 from .feeds import CSVPriceFeed, YahooFinanceFeed, RandomWalkFeed
 from .strategy import TradingDecisionSupport, TradingAction
+from .multi_agent import (
+    MultiAgentTrader, AgentConfig, crdt_merge_trade_logs,
+    compare_merged_to_unmerged,
+)
 
 __all__ = [
     "PaperTrader",
@@ -39,4 +43,8 @@ __all__ = [
     "RandomWalkFeed",
     "TradingDecisionSupport",
     "TradingAction",
+    "MultiAgentTrader",
+    "AgentConfig",
+    "crdt_merge_trade_logs",
+    "compare_merged_to_unmerged",
 ]

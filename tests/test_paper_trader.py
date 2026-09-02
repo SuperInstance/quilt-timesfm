@@ -33,6 +33,8 @@ from paper_trading import (
     CSVPriceFeed,
     RandomWalkFeed,
     YahooFinanceFeed,
+    MultiAgentTrader, AgentConfig,
+    crdt_merge_trade_logs, compare_merged_to_unmerged,
 )
 from paper_trading.trader import Trade, Portfolio, Position
 
@@ -325,6 +327,82 @@ class TestYahooFinanceFeed(unittest.TestCase):
         feed = YahooFinanceFeed("AAPL", "2024-01-01", "2024-01-31")
         self.assertEqual(feed.ticker, "AAPL")
         self.assertEqual(feed.start, "2024-01-01")
+
+
+# ─── Multi-agent CRDT ────────────────────────────────────────────
+
+class TestMultiAgentTrader(unittest.TestCase):
+    def test_three_agents_same_feed(self):
+        from paper_trading import (
+            MultiAgentTrader, AgentConfig, synthetic_price_stream,
+        )
+        configs = [
+            AgentConfig(name="conservative", threshold_return=0.01),
+            AgentConfig(name="balanced", threshold_return=0.005),
+            AgentConfig(name="aggressive", threshold_return=0.001),
+        ]
+        trader = MultiAgentTrader(configs, asset="TEST")
+        stream = synthetic_price_stream(n_steps=200, seed=0)
+        result = trader.run(stream, n_steps=200)
+        self.assertEqual(result["n_agents"], 3)
+        # Each agent has its own trades
+        self.assertGreater(result["total_trades"], 0)
+
+    def test_unique_uris_across_agents(self):
+        from paper_trading import (
+            MultiAgentTrader, AgentConfig, synthetic_price_stream,
+        )
+        configs = [AgentConfig(name=f"a{i}") for i in range(3)]
+        trader = MultiAgentTrader(configs)
+        stream = synthetic_price_stream(n_steps=200, seed=0)
+        result = trader.run(stream, n_steps=200)
+        # Every URI should be unique across all agents
+        all_uris = []
+        for a in result["per_agent"]:
+            all_uris.extend(a["trade_uris"])
+        self.assertEqual(len(all_uris), len(set(all_uris)),
+                         "URIs must be unique across agents for CRDT merge")
+
+
+class TestCRDTMerge(unittest.TestCase):
+    def test_merge_combines_logs(self):
+        # Two agents, two logs, one merged dict
+        log1 = [
+            {"forecast_uri": "quf://forecast/A/5/v1/aaaa",
+             "action": "buy", "current_price": 100.0},
+            {"forecast_uri": "quf://forecast/A/5/v1/bbbb",
+             "action": "sell", "current_price": 101.0},
+        ]
+        log2 = [
+            {"forecast_uri": "quf://forecast/A/5/v1/cccc",
+             "action": "hold", "current_price": 102.0},
+        ]
+        merged = crdt_merge_trade_logs(log1, log2)
+        self.assertEqual(len(merged), 3)
+        self.assertIn("quf://forecast/A/5/v1/aaaa", merged)
+        self.assertIn("quf://forecast/A/5/v1/cccc", merged)
+
+    def test_merge_idempotent(self):
+        # Merging the same log twice should not duplicate
+        log = [{"forecast_uri": "quf://forecast/A/5/v1/aaaa", "action": "buy"}]
+        merged_once = crdt_merge_trade_logs(log)
+        merged_twice = crdt_merge_trade_logs(log, log)
+        self.assertEqual(len(merged_once), len(merged_twice))
+
+    def test_merge_commutative(self):
+        # Order shouldn't matter
+        log1 = [{"forecast_uri": "quf://forecast/A/5/v1/aaaa", "action": "buy"}]
+        log2 = [{"forecast_uri": "quf://forecast/A/5/v1/bbbb", "action": "sell"}]
+        m1 = crdt_merge_trade_logs(log1, log2)
+        m2 = crdt_merge_trade_logs(log2, log1)
+        self.assertEqual(set(m1.keys()), set(m2.keys()))
+
+    def test_consistency_check(self):
+        log1 = [{"forecast_uri": "quf://x/1"}]
+        log2 = [{"forecast_uri": "quf://x/2"}]
+        merged = crdt_merge_trade_logs(log1, log2)
+        consistency = compare_merged_to_unmerged(merged, [log1, log2])
+        self.assertTrue(consistency["consistent"])
 
 
 if __name__ == "__main__":
