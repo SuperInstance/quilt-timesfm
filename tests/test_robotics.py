@@ -30,6 +30,7 @@ from robotics import (
     LagrangianArm, ArmParams, TrajectoryPoint,
     computed_torque_torque, impedance_torque, ik_2link,
     min_jerk_trajectory, RealPickAndPlace,
+    CellDrivenController, compare_controllers,
 )
 
 
@@ -425,6 +426,69 @@ class TestRealPickAndPlace(unittest.TestCase):
         self.assertEqual(forecast_q1.shape, forecast_q2.shape)
         self.assertEqual(forecast_q1.shape, forecast_q1dot.shape)
         self.assertEqual(forecast_q1.shape, forecast_q2dot.shape)
+
+
+# ─── Cell-driven control ────────────────────────────────────────
+
+class TestCellDrivenController(unittest.TestCase):
+    def test_reaches_target(self):
+        np.random.seed(42)
+        arm = LagrangianArm(q1=0.3, q2=0.7)
+        q_target = np.array([1.2, 0.4])
+        ctrl = CellDrivenController(arm, q_target)
+        result = ctrl.run(n_ticks=1000)
+        # After 10 seconds, the arm should be at the target
+        self.assertLess(result["final_tracking_error"], 0.01,
+                        f"final error {result['final_tracking_error']} should be <0.01 rad")
+
+    def test_forecast_error_drops(self):
+        # The cell should learn the dynamics over time
+        np.random.seed(42)
+        arm = LagrangianArm(q1=0.3, q2=0.7)
+        q_target = np.array([1.2, 0.4])
+        ctrl = CellDrivenController(arm, q_target)
+        result = ctrl.run(n_ticks=1000)
+        early = np.mean(result["forecast_error_history"][10:50])
+        late = np.mean(result["forecast_error_history"][-50:])
+        # The forecast error should drop over time as the cell learns
+        self.assertLess(late, early * 0.5,
+                        f"forecast error should drop; early={early:.4f}, late={late:.4f}")
+
+    def test_alpha_increases(self):
+        # alpha (the cell's trust) should rise as the cell learns
+        np.random.seed(42)
+        arm = LagrangianArm(q1=0.3, q2=0.7)
+        q_target = np.array([1.2, 0.4])
+        ctrl = CellDrivenController(arm, q_target)
+        # Run for a few hundred ticks
+        for _ in range(500):
+            ctrl.step()
+        # After learning, alpha should be high
+        self.assertGreater(ctrl._alpha(), 0.5)
+
+    def test_compare_controllers(self):
+        np.random.seed(42)
+        comp = compare_controllers(n_ticks=500)
+        # Both should reach the target
+        self.assertLess(comp["pd_only"]["final_error"], 0.01)
+        self.assertLess(comp["cell_driven"]["final_error"], 0.01)
+        # The cell's forecast error should be small
+        self.assertLess(comp["cell_driven"]["mean_forecast_error"], 0.1)
+
+
+class TestReadFullForecast(unittest.TestCase):
+    def test_shape(self):
+        c = SensorCell(channel_names=["a", "b", "c"], horizon=5)
+        for i in range(10):
+            c.append(np.array([float(i), float(i*2), float(i*3)]))
+        c.forecast_()
+        full = c.read_full_forecast()
+        self.assertEqual(full.shape, (5, 3))
+
+    def test_empty_before_forecast(self):
+        c = SensorCell(channel_names=["a", "b"])
+        full = c.read_full_forecast()
+        self.assertEqual(full.shape, (0, 2))
 
 
 if __name__ == "__main__":

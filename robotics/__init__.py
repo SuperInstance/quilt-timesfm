@@ -47,6 +47,9 @@ from .lagrangian_arm import (
     min_jerk_trajectory,
 )
 from .real_pick_and_place import RealPickAndPlace, TrajectoryPoint
+from .cell_driven_controller import (
+    CellDrivenController, CellControlStep, compare_controllers,
+)
 
 __all__ = [
     "SensorCell",
@@ -65,4 +68,7 @@ __all__ = [
     "min_jerk_trajectory",
     "RealPickAndPlace",
     "TrajectoryPoint",
+    "CellDrivenController",
+    "CellControlStep",
+    "compare_controllers",
 ]

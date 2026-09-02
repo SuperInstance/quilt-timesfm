@@ -154,6 +154,18 @@ class SensorCell:
             return np.zeros(0)
         return self._forecast[:, channel].copy()
 
+    def read_full_forecast(self) -> np.ndarray:
+        """Read the full forecast tensor [H, V] for all channels.
+
+        Unlike read_point(channel), this returns the entire
+        forecast, not a single channel. Useful for controllers
+        that need all the state (e.g. q and q_dot together).
+        Returns an empty array if no forecast has been made.
+        """
+        if self._forecast is None:
+            return np.zeros((0, self.n_channels))
+        return self._forecast.copy()
+
     def read_quantile(self, q: float, channel: int = 0) -> np.ndarray:
         """Read a quantile forecast (READ_QUANTILE)."""
         if self._quantiles is None or channel >= self.n_channels:

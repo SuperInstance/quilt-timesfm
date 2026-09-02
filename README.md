@@ -4,7 +4,7 @@ Python binding for [TimesFM 3.0](https://github.com/google-research/timesfm) as 
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
-[![Tests: 159 + 1 skip](https://img.shields.io/badge/tests-159%20%2B%201%20skip-brightgreen.svg)](tests/)
+[![Tests: 165 + 1 skip](https://img.shields.io/badge/tests-165%20%2B%201%20skip-brightgreen.svg)](tests/)
 [![CI](https://github.com/SuperInstance/quilt-timesfm/actions/workflows/test.yml/badge.svg)](https://github.com/SuperInstance/quilt-timesfm/actions/workflows/test.yml)
 [![Build](https://github.com/SuperInstance/quilt-timesfm/actions/workflows/main.yml/badge.svg)](https://github.com/SuperInstance/quilt-timesfm/actions/workflows/main.yml)
 [![Polyformalism: C / Python / Rust](https://img.shields.io/badge/polyformalism-C%20%2F%20Python%20%2F%20Rust-orange.svg)](docs/POLYFORMALISM.md)
@@ -31,7 +31,7 @@ q10   = cell.read_quantile(0.1, 0)  # 10th percentile
 q90   = cell.read_quantile(0.9, 0)  # 90th percentile
 ```
 
-159 tests across 4 suites (cell + temporal + paper-trading + robotics), all green.
+165 tests across 4 suites (cell + temporal + paper-trading + robotics), all green.
 
 ## What is a `time.cell`?
 
@@ -126,7 +126,7 @@ VIEW purity, TICK monotonicity, FORGET completeness) hold across all 11.
 - [`tests/test_quilt_cell.py`](tests/test_quilt_cell.py) — 45 conformance tests + 1 skip (real TimesFM)
 - [`tests/test_temporal.py`](tests/test_temporal.py) — 49 temporal-reasoner tests
 - [`tests/test_paper_trader.py`](tests/test_paper_trader.py) — 27 paper-trader tests (incl. CSV/Yahoo feeds)
-- [`tests/test_robotics.py`](tests/test_robotics.py) — 38 robotics tests (incl. Lagrangian dynamics)
+- [`tests/test_robotics.py`](tests/test_robotics.py) — 44 robotics tests (Lagrangian dynamics + cell-driven control)
 - [Quilt canon](https://github.com/SuperInstance/AI-Writings) — 401 papers
 - [Quilt wiki](https://github.com/SuperInstance/quilt-wiki-2126) — 38 entries
 - [Quilt architecture](ARCHITECTURE.md) — the single document for "what is Quilt"
@@ -137,7 +137,7 @@ VIEW purity, TICK monotonicity, FORGET completeness) hold across all 11.
 python3 tests/test_quilt_cell.py     # 45 tests — cell conformance (+ 1 skip on real TimesFM)
 python3 tests/test_temporal.py       # 49 tests — temporal-reasoner conformance
 python3 tests/test_paper_trader.py  # 27 tests — paper-trading agent + CSV/Yahoo feeds
-python3 tests/test_robotics.py      # 38 tests — robotics cells + Lagrangian dynamics + 2-DOF arm
+python3 tests/test_robotics.py      # 44 tests — robotics cells + Lagrangian dynamics + cell-driven control
 python3 examples/01_temperature.py  # univariate, 365d → 30d
 python3 examples/02_stock.py        # univariate with covariate
 python3 examples/03_demand.py       # 3-channel multivariate
@@ -206,6 +206,11 @@ same as in paper trading; only the substrate binding differs.
     cycle over 15 seconds.
   - **`ik_2link()`** — closed-form analytical inverse kinematics.
     Roundtrip is bit-exact.
+  - **`CellDrivenController`** — the cell's forecast actually
+    drives the control. The SensorCell predicts the next state;
+    the controller adds a forecast-based correction torque on
+    top of computed-torque. The cell's forecast error drops
+    from 0.035 rad to 0.0000 rad as it learns the dynamics.
 
 The cell shape (context [T, V], forecast [H, V], 5 ops, 5+1 laws)
 is preserved across both applications. A JEPA-style latent
