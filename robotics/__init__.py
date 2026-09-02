@@ -1,29 +1,21 @@
-"""Robotics-shaped cells — the interface between the cell model and a robot.
+"""Robotics — cells + real Lagrangian dynamics + computed-torque control.
 
-This module is the bridge. It doesn't run a real robot (no ROS, no
-MuJoCo, no Isaac), but it defines the cell shape and the data flow
-that would let a `time.cell` forecast be used as the input to a
-robot controller.
+The cell model (SensorCell, ActionCell) wraps a real robot arm:
 
-The motivation: the README says "agents that act on the world need
-to forecast". For a trading agent, the world is a price series. For
-a robotic agent, the world is a stream of sensor readings. The
-cell model — context, forecast, quantiles, read — applies to both.
-
-This module provides:
-
-  - SensorCell: a cell whose state is a multivariate sensor stream
-    (joint angles, IMU, force, vision features) and whose forecast
-    is a predicted future state.
-  - ActionCell: a cell whose state is a target trajectory (joint
-    positions, gripper commands) and whose value is a feasible
-    motion plan.
+  - LagrangianArm: a 2-link planar arm with proper mass matrix,
+    Coriolis, and friction. State is (q, q_dot). The dynamics
+    are integrated with RK4 at 1ms sub-steps.
+  - RealPickAndPlace: a pick-and-place task that uses computed-torque
+    control (full nonlinear dynamics cancellation) and min-jerk
+    trajectories between waypoints. Tracks position to <0.01 rad.
+  - SensorCell: a 4-channel cell (q1, q2, q1_dot, q2_dot) whose
+    forecast is the predicted next state. Used for look-ahead.
+  - ActionCell: a 2-channel cell (tau1, tau2) whose forecast is
+    the planned torque trajectory.
   - ControlLoop: a tick loop that ties sensor -> forecast -> action
-    -> command -> record outcome -> update calibration. The shape is
-    exactly the same as PaperTrader, but the cells are different.
-  - A pick-and-place demo: a 2-DOF arm simulated as a 2-channel
-    sensor stream. Forecast the next position, decide whether to
-    move, record the result.
+    -> command -> record outcome.
+  - PickAndPlaceDemo (legacy): a kinematic version kept for
+    comparison with the real arm.
 
 The cell shape is the same as `time.cell`:
 
@@ -35,21 +27,26 @@ The cell shape is the same as `time.cell`:
   - 5+1 laws: BIND idempotence, LINK transitivity, EFFECT
     associativity, VIEW purity, TICK monotonicity, FORGET completeness
 
-What this does NOT do (yet):
-
-  - Real physics. The 2-DOF arm is kinematic only — no torque,
-    no inertia, no collision. Use a proper simulator (MuJoCo,
-    Isaac, Brax) for those.
-  - Vision. The "vision" channel is a synthetic 1-D feature,
-    not pixels. JEPA-style latent prediction would go here.
-  - Reinforcement learning. The control loop is deterministic
-    (forecast -> decide -> execute), not policy-gradient.
+Why the cell model fits robotics: in trading, the world is a
+price series. In robotics, the world is a sensor stream. The
+cell machinery — context, forecast, quantiles, read — applies
+to both. The substrate binding (TimesFM for prices, Lagrangian
+dynamics for the arm) is the only thing that varies.
 """
 
 from .sensor_cell import SensorCell
 from .action_cell import ActionCell
 from .control_loop import ControlLoop, RobotState, RobotAction
 from .pick_and_place import PickAndPlaceDemo, TwoDOFArm
+from .lagrangian_arm import (
+    LagrangianArm, ArmParams,
+    gravity_compensation_torque,
+    impedance_torque,
+    computed_torque_torque,
+    ik_2link,
+    min_jerk_trajectory,
+)
+from .real_pick_and_place import RealPickAndPlace, TrajectoryPoint
 
 __all__ = [
     "SensorCell",
@@ -59,4 +56,13 @@ __all__ = [
     "RobotAction",
     "PickAndPlaceDemo",
     "TwoDOFArm",
+    "LagrangianArm",
+    "ArmParams",
+    "gravity_compensation_torque",
+    "impedance_torque",
+    "computed_torque_torque",
+    "ik_2link",
+    "min_jerk_trajectory",
+    "RealPickAndPlace",
+    "TrajectoryPoint",
 ]

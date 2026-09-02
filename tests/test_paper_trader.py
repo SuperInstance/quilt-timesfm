@@ -30,6 +30,9 @@ from paper_trading import (
     synthetic_price_stream,
     GeometricBrownianMotion,
     EXAMPLE_SHOCKS,
+    CSVPriceFeed,
+    RandomWalkFeed,
+    YahooFinanceFeed,
 )
 from paper_trading.trader import Trade, Portfolio, Position
 
@@ -226,6 +229,102 @@ class TestTradingAction(unittest.TestCase):
         )
         self.assertEqual(d.action.value, "buy")
         self.assertEqual(d.confidence, 0.8)
+
+
+# ─── Real-world data feeds ───────────────────────────────────────
+
+class TestCSVPriceFeed(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        import tempfile, csv, datetime
+        # Write a sample CSV for the tests
+        cls.tmp = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".csv", delete=False,
+        )
+        w = csv.writer(cls.tmp)
+        w.writerow(["date", "close"])
+        base = datetime.date(2023, 1, 2)
+        for i in range(100):
+            d = base + datetime.timedelta(days=i)
+            price = 100 + i * 0.5  # monotonically increasing
+            w.writerow([d.isoformat(), f"{price:.2f}"])
+        cls.tmp.close()
+        cls.path = cls.tmp.name
+
+    @classmethod
+    def tearDownClass(cls):
+        import os
+        os.unlink(cls.path)
+
+    def test_reads_correct_row_count(self):
+        feed = CSVPriceFeed(self.path)
+        self.assertEqual(len(feed), 100)
+
+    def test_first_and_last_price(self):
+        feed = CSVPriceFeed(self.path)
+        self.assertAlmostEqual(feed.first_price, 100.0, places=2)
+        self.assertAlmostEqual(feed.last_price, 149.5, places=2)
+
+    def test_total_return(self):
+        feed = CSVPriceFeed(self.path)
+        # 100 -> 149.5 = +49.5%
+        self.assertAlmostEqual(feed.total_return, 0.495, places=2)
+
+    def test_stream_yields_tuples(self):
+        feed = CSVPriceFeed(self.path)
+        for ts, price in feed.stream():
+            self.assertIsInstance(ts, int)
+            self.assertIsInstance(price, float)
+            self.assertGreater(price, 0)
+            break  # just check the first one
+
+    def test_missing_file_raises(self):
+        with self.assertRaises(FileNotFoundError):
+            CSVPriceFeed("/nonexistent/path.csv")
+
+    def test_paper_trader_on_csv(self):
+        # The paper trader should run end-to-end on a real CSV
+        feed = CSVPriceFeed(self.path)
+        cell = TimeCell()
+        reasoner = TemporalReasoner(cell=cell)
+        strategy = TradingDecisionSupport(memory=reasoner.memory)
+        trader = PaperTrader(
+            cell=cell, reasoner=reasoner, strategy=strategy,
+            asset="TEST", history_len=32, horizon=3, min_history=20,
+        )
+        result = trader.run(feed.stream())
+        self.assertGreaterEqual(result["n_trades"], 0)
+        # The trade log should be populated (or all GATHER_DATA, both are valid)
+        for t in result["trade_log"]:
+            self.assertIn("forecast_uri", t)
+
+
+class TestRandomWalkFeed(unittest.TestCase):
+    def test_reproducible(self):
+        f1 = RandomWalkFeed(n_steps=100, seed=0)
+        f2 = RandomWalkFeed(n_steps=100, seed=0)
+        a = list(f1.stream())
+        b = list(f2.stream())
+        self.assertEqual(a, b)
+
+    def test_different_seeds_differ(self):
+        f1 = RandomWalkFeed(n_steps=100, seed=0)
+        f2 = RandomWalkFeed(n_steps=100, seed=1)
+        a = list(f1.stream())
+        b = list(f2.stream())
+        self.assertNotEqual(a, b)
+
+    def test_length(self):
+        feed = RandomWalkFeed(n_steps=50)
+        self.assertEqual(len(list(feed.stream())), 50)
+
+
+class TestYahooFinanceFeed(unittest.TestCase):
+    def test_constructs_without_network(self):
+        # Construction should not hit the network
+        feed = YahooFinanceFeed("AAPL", "2024-01-01", "2024-01-31")
+        self.assertEqual(feed.ticker, "AAPL")
+        self.assertEqual(feed.start, "2024-01-01")
 
 
 if __name__ == "__main__":

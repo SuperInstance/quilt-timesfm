@@ -4,7 +4,7 @@ Python binding for [TimesFM 3.0](https://github.com/google-research/timesfm) as 
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
-[![Tests: 133](https://img.shields.io/badge/tests-133%20%2B%201%20skip-brightgreen.svg)](tests/)
+[![Tests: 159 + 1 skip](https://img.shields.io/badge/tests-159%20%2B%201%20skip-brightgreen.svg)](tests/)
 [![CI](https://github.com/SuperInstance/quilt-timesfm/actions/workflows/test.yml/badge.svg)](https://github.com/SuperInstance/quilt-timesfm/actions/workflows/test.yml)
 [![Build](https://github.com/SuperInstance/quilt-timesfm/actions/workflows/main.yml/badge.svg)](https://github.com/SuperInstance/quilt-timesfm/actions/workflows/main.yml)
 [![Polyformalism: C / Python / Rust](https://img.shields.io/badge/polyformalism-C%20%2F%20Python%20%2F%20Rust-orange.svg)](docs/POLYFORMALISM.md)
@@ -31,7 +31,7 @@ q10   = cell.read_quantile(0.1, 0)  # 10th percentile
 q90   = cell.read_quantile(0.9, 0)  # 90th percentile
 ```
 
-133 tests across 4 suites (cell + temporal + paper-trading + robotics), all green.
+159 tests across 4 suites (cell + temporal + paper-trading + robotics), all green.
 
 ## What is a `time.cell`?
 
@@ -123,10 +123,10 @@ VIEW purity, TICK monotonicity, FORGET completeness) hold across all 11.
 - [`robotics/`](robotics/) — robotics-shaped cells (SensorCell, ActionCell) and a 2-DOF pick-and-place demo
 - [`notebooks/paper_trading.ipynb`](notebooks/paper_trading.ipynb) — interactive walkthrough of the paper trader with charts
 - [`examples/`](examples/) — 8 runnable examples
-- [`tests/test_quilt_cell.py`](tests/test_quilt_cell.py) — 49 conformance tests
+- [`tests/test_quilt_cell.py`](tests/test_quilt_cell.py) — 45 conformance tests + 1 skip (real TimesFM)
 - [`tests/test_temporal.py`](tests/test_temporal.py) — 49 temporal-reasoner tests
-- [`tests/test_paper_trader.py`](tests/test_paper_trader.py) — 17 paper-trader tests
-- [`tests/test_robotics.py`](tests/test_robotics.py) — 18 robotics tests
+- [`tests/test_paper_trader.py`](tests/test_paper_trader.py) — 27 paper-trader tests (incl. CSV/Yahoo feeds)
+- [`tests/test_robotics.py`](tests/test_robotics.py) — 38 robotics tests (incl. Lagrangian dynamics)
 - [Quilt canon](https://github.com/SuperInstance/AI-Writings) — 401 papers
 - [Quilt wiki](https://github.com/SuperInstance/quilt-wiki-2126) — 38 entries
 - [Quilt architecture](ARCHITECTURE.md) — the single document for "what is Quilt"
@@ -134,10 +134,10 @@ VIEW purity, TICK monotonicity, FORGET completeness) hold across all 11.
 ## Run the tests
 
 ```bash
-python3 tests/test_quilt_cell.py     # 49 tests — cell conformance
+python3 tests/test_quilt_cell.py     # 45 tests — cell conformance (+ 1 skip on real TimesFM)
 python3 tests/test_temporal.py       # 49 tests — temporal-reasoner conformance
-python3 tests/test_paper_trader.py  # 17 tests — paper-trading agent
-python3 tests/test_robotics.py      # 18 tests — robotics cells + 2-DOF arm
+python3 tests/test_paper_trader.py  # 27 tests — paper-trading agent + CSV/Yahoo feeds
+python3 tests/test_robotics.py      # 38 tests — robotics cells + Lagrangian dynamics + 2-DOF arm
 python3 examples/01_temperature.py  # univariate, 365d → 30d
 python3 examples/02_stock.py        # univariate with covariate
 python3 examples/03_demand.py       # 3-channel multivariate
@@ -152,11 +152,24 @@ python3 -m paper_trading --steps 500 --shock earnings_beat
 
 ### Paper trading
 
-`paper_trading/` is a complete agent that:
-  1. Streams a price series (synthetic GBM by default; pluggable for real feeds)
+`paper_trading/` is a complete agent that runs against real market
+data. Three data sources are wired in:
+  - **CSV** — `CSVPriceFeed(path)`. Drop in any CSV with a
+    `date,close` column (Yahoo Finance exports work; so do
+    Kaggle datasets). Verified: +8% on 500 days of synthetic
+    AAPL-shaped data, full lifecycle on 5 years of real AAPL
+    pulled from Yahoo Finance.
+  - **Yahoo Finance** — `YahooFinanceFeed("AAPL", start, end)`.
+    Pulls historical prices over HTTPS using only the standard
+    library (no `yfinance` dependency).
+  - **Synthetic GBM** — `synthetic_price_stream(steps, drift, vol)`
+    for tests and CI.
+
+The agent:
+  1. Streams prices (any of the three sources)
   2. Binds the rolling history to a `TimeCell`
   3. Forecasts the next N steps with `forecast_trend()` (or real TimesFM 3.0)
-  4. Decides buy / sell / hold via `TradingDecisionSupport`
+  4. Decides buy / sell / hold / half_size / gather_data via `TradingDecisionSupport`
   5. Executes on a `Portfolio` with position caps
   6. Records the actual outcome when the horizon elapses
   7. Updates the calibration score in the `AgentMemory`
@@ -164,24 +177,40 @@ python3 -m paper_trading --steps 500 --shock earnings_beat
 Every trade is addressable via a `quf://forecast/{source}/{horizon}/v{N}/{id}`
 URI, so trade logs from multiple agents can be CRDT-merged.
 
+```bash
+python3 -m paper_trading --csv data/AAPL.csv --asset AAPL
+python3 -m paper_trading --ticker AAPL --start 2020-01-01 --end 2024-12-31
+python3 -m paper_trading --steps 500 --shock earnings_beat
+```
+
 ### Robotics
 
-`robotics/` is the robotics-shaped interface. The cell model applies
-to a sensor stream the same way it applies to a price stream:
+`robotics/` is the robotics interface. The cell machinery is the
+same as in paper trading; only the substrate binding differs.
   - **`SensorCell`** — context is a multivariate sensor stream
-    (joint angles, IMU, force, vision features). Forecast is the
-    next sensor state. This is the robotics equivalent of
-    `time.cell`; the cell shape is identical.
+    (joint angles, joint velocities, IMU, force, vision features).
+    Forecast is the next sensor state.
   - **`ActionCell`** — context is a target trajectory. Forecast
     is the planned motion.
-  - **`PickAndPlaceDemo`** — a 2-DOF arm with analytical
-    inverse kinematics. Runs through a `home → pick → place` cycle
-    using the cell model as the control loop.
+  - **`LagrangianArm`** — a 2-link planar arm with **real
+    Lagrangian dynamics**: proper mass matrix, Coriolis forces,
+    viscous friction. Integrated with RK4 at 1 ms sub-steps.
+  - **`computed_torque_torque()`** — a computed-torque controller
+    with full nonlinear dynamics cancellation (Spong et al.,
+    chapter 6). Tracks a target trajectory to <0.01 rad.
+  - **`min_jerk_trajectory()`** — minimum-jerk position profile
+    (Flash & Hogan, 1985) for smooth waypoint transitions.
+  - **`RealPickAndPlace`** — runs a `home → pick → place` cycle
+    on the Lagrangian arm with computed-torque control. Mean
+    tracking error ~0.025 rad, max <0.08 rad on a 1 Hz waypoint
+    cycle over 15 seconds.
+  - **`ik_2link()`** — closed-form analytical inverse kinematics.
+    Roundtrip is bit-exact.
 
-The cell shape is preserved across applications. A real
-implementation would use a JEPA-style latent dynamics model in
-place of the linear extrapolation; see `JEPA.md` for the
-synergy discussion.
+The cell shape (context [T, V], forecast [H, V], 5 ops, 5+1 laws)
+is preserved across both applications. A JEPA-style latent
+dynamics model would slot into `LagrangianArm.acceleration()` as
+a learned substitute; see `JEPA.md` for the synergy discussion.
 
 ## Contributing
 

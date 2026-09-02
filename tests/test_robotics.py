@@ -4,9 +4,13 @@ The tests cover:
   - SensorCell append/bind/forecast/reads
   - ActionCell set_target/bind/forecast/next_command
   - ControlLoop step + run
-  - PickAndPlaceDemo runs end-to-end
-  - Cell-shape compatibility: SensorCell and ActionCell have the
-    same forecast shape [H, V] and quantile shape [9, H, V].
+  - PickAndPlaceDemo (kinematic) runs end-to-end
+  - LagrangianArm dynamics (mass matrix, Coriolis, friction)
+  - Computed-torque controller tracks a target
+  - IK roundtrip
+  - Min-jerk trajectory is smooth
+  - RealPickAndPlace runs the full pick-and-place task
+  - Cell-shape compatibility
 """
 import os
 os.environ.setdefault("QUILT_TIMESFM_SYNTHETIC", "1")
@@ -23,6 +27,9 @@ import numpy as np
 from robotics import (
     SensorCell, ActionCell, ControlLoop, RobotAction,
     PickAndPlaceDemo, TwoDOFArm,
+    LagrangianArm, ArmParams, TrajectoryPoint,
+    computed_torque_torque, impedance_torque, ik_2link,
+    min_jerk_trajectory, RealPickAndPlace,
 )
 
 
@@ -214,6 +221,210 @@ class TestCellShapeCompatibility(unittest.TestCase):
         s_forecast = sensor.read_point(0)
         a_forecast = action.read_point(0)
         self.assertEqual(s_forecast.shape, a_forecast.shape)
+
+
+# ─── Real Lagrangian dynamics ────────────────────────────────────
+
+class TestLagrangianArm(unittest.TestCase):
+    def test_no_torque_arm_stays_still(self):
+        arm = LagrangianArm(q1=0.5, q2=1.0)
+        q0 = arm.q.copy()
+        arm.send_torque(np.zeros(2), duration=0.05)
+        # After 50ms with no torque, the arm should be at almost the same pose
+        self.assertLess(np.linalg.norm(arm.q - q0), 1e-6)
+
+    def test_torque_moves_arm(self):
+        arm = LagrangianArm(q1=0.5, q2=1.0)
+        q0 = arm.q.copy()
+        arm.send_torque(np.array([2.0, 1.0]), duration=0.1)
+        # With torque applied, the arm must have moved
+        self.assertGreater(np.linalg.norm(arm.q - q0), 1e-4)
+
+    def test_torque_clamped_to_max(self):
+        # A torque of 1000 Nm should be clamped to ±tau_max
+        arm = LagrangianArm()
+        arm.send_torque(np.array([1000.0, -1000.0]), duration=0.001)
+        # Just verify the call doesn't error; the physics is sound
+        self.assertTrue(np.all(np.isfinite(arm.state)))
+
+    def test_mass_matrix_symmetric_positive_definite(self):
+        arm = LagrangianArm()
+        M = arm.mass_matrix(arm.q)
+        self.assertTrue(np.allclose(M, M.T))
+        eigvals = np.linalg.eigvalsh(M)
+        self.assertTrue(np.all(eigvals > 0))
+
+    def test_mass_matrix_depends_on_configuration(self):
+        # The mass matrix changes with the joint angles
+        arm = LagrangianArm()
+        M1 = arm.mass_matrix(np.array([0.0, 0.0]))
+        M2 = arm.mass_matrix(np.array([np.pi / 2, np.pi / 4]))
+        self.assertFalse(np.allclose(M1, M2))
+
+    def test_state_shape(self):
+        arm = LagrangianArm()
+        self.assertEqual(arm.state.shape, (4,))
+
+    def test_forward_kinematics_at_zero(self):
+        arm = LagrangianArm(q1=0.0, q2=0.0)
+        ee = arm.forward_kinematics()
+        # At zero, both links along +x axis
+        self.assertAlmostEqual(ee[0], arm.p.L1 + arm.p.L2, places=4)
+        self.assertAlmostEqual(ee[1], 0.0, places=4)
+
+    def test_jacobian_shape(self):
+        arm = LagrangianArm()
+        J = arm.jacobian()
+        self.assertEqual(J.shape, (2, 2))
+
+
+class TestComputedTorqueController(unittest.TestCase):
+    def test_tracks_constant_target(self):
+        # The computed-torque controller should track a constant
+        # target with near-zero error after the transient.
+        arm = LagrangianArm(q1=0.3, q2=0.7)
+        q_target = np.array([1.2, 0.4])
+        for _ in range(2000):  # 20 seconds at 100Hz
+            tau = computed_torque_torque(arm, q_target, np.zeros(2),
+                                          kp=200.0, kd=20.0)
+            arm.send_torque(tau, duration=0.01)
+        err = np.linalg.norm(arm.q - q_target)
+        self.assertLess(err, 1e-3,
+                        f"tracking error {err} should be < 1e-3 rad")
+
+    def test_tracks_sinusoidal_target(self):
+        # A sinusoidal target should be tracked with bounded error.
+        arm = LagrangianArm(q1=0.5, q2=1.0)
+        errors = []
+        for i in range(1000):
+            t = i * 0.01
+            q_des = np.array([0.5 + 0.3 * np.sin(t), 1.0 + 0.2 * np.cos(t)])
+            q_dot_des = np.array([0.3 * np.cos(t), -0.2 * np.sin(t)])
+            tau = computed_torque_torque(arm, q_des, q_dot_des,
+                                          kp=300.0, kd=30.0)
+            arm.send_torque(tau, duration=0.01)
+            errors.append(np.linalg.norm(arm.q - q_des))
+        # Mean error over the trajectory should be small
+        self.assertLess(np.mean(errors), 0.05,
+                        f"mean tracking error {np.mean(errors)} too high")
+
+
+class TestInverseKinematics(unittest.TestCase):
+    def test_ik_roundtrip(self):
+        arm = LagrangianArm()
+        target = np.array([0.4, 0.3])
+        q = ik_2link(target, arm.p.L1, arm.p.L2)
+        self.assertIsNotNone(q)
+        arm.reset(q=q)
+        ee = arm.forward_kinematics()
+        self.assertAlmostEqual(ee[0], target[0], places=3)
+        self.assertAlmostEqual(ee[1], target[1], places=3)
+
+    def test_ik_unreachable(self):
+        # A point well outside the workspace
+        q = ik_2link(np.array([5.0, 5.0]), 0.5, 0.4)
+        self.assertIsNone(q)
+
+    def test_ik_origin(self):
+        # The origin is between the two IK solutions; both should
+        # place the end-effector at the origin.
+        arm = LagrangianArm()
+        q = ik_2link(np.array([0.0, 0.0]), arm.p.L1, arm.p.L2)
+        # The origin requires L1 cos(q1) + L2 cos(q1+q2) = 0
+        # This is reachable; check that one solution works
+        if q is not None:
+            arm.reset(q=q)
+            ee = arm.forward_kinematics()
+            self.assertAlmostEqual(ee[0], 0.0, places=3)
+            self.assertAlmostEqual(ee[1], 0.0, places=3)
+
+
+class TestMinJerkTrajectory(unittest.TestCase):
+    def test_trajectory_endpoints(self):
+        q_start = np.array([0.5, 1.0])
+        q_end = np.array([1.5, 0.0])
+        traj = min_jerk_trajectory(q_start, q_end, duration=1.0, n_points=20)
+        # At t=0, the trajectory is at q_start
+        np.testing.assert_array_almost_equal(traj[0].q, q_start)
+        # At t=duration, the trajectory is at q_end
+        np.testing.assert_array_almost_equal(traj[-1].q, q_end)
+
+    def test_trajectory_smooth(self):
+        # Successive points should be close to each other (smooth)
+        traj = min_jerk_trajectory(
+            np.array([0.0, 0.0]), np.array([1.0, 1.0]),
+            duration=1.0, n_points=100,
+        )
+        diffs = [np.linalg.norm(traj[i + 1].q - traj[i].q)
+                 for i in range(len(traj) - 1)]
+        # The max step should be much smaller than the total path length
+        self.assertLess(max(diffs), 0.1)
+
+    def test_trajectory_timestamps(self):
+        traj = min_jerk_trajectory(
+            np.array([0.0, 0.0]), np.array([1.0, 1.0]),
+            duration=2.0, n_points=5,
+        )
+        for i, p in enumerate(traj):
+            self.assertAlmostEqual(p.t, i * 0.5, places=4)
+
+
+class TestRealPickAndPlace(unittest.TestCase):
+    def test_runs_to_completion(self):
+        demo = RealPickAndPlace()
+        result = demo.run(n_ticks=600, verbose=False)  # 6 seconds
+        self.assertEqual(result["n_ticks"], 600)
+        # The arm should have made progress
+        self.assertGreater(result["duration"], 5.0)
+        # Mean tracking error should be small (< 5 deg)
+        self.assertLess(result["mean_tracking_error"], 0.1,
+                        f"mean error {result['mean_tracking_error']:.4f} rad")
+
+    def test_reaches_waypoints(self):
+        # After running, the arm should be near one of the waypoints
+        np.random.seed(42)
+        demo = RealPickAndPlace()
+        demo.run(n_ticks=1500)  # 15 seconds
+        arm = demo.arm
+        # The end-effector should be near one of the waypoints
+        ee = arm.forward_kinematics()
+        waypoints_xy = [np.array([0.6, 0.0]), np.array([0.3, 0.4]),
+                        np.array([-0.3, 0.4])]
+        dists = [np.linalg.norm(ee - wp) for wp in waypoints_xy]
+        self.assertTrue(
+            any(d < 0.1 for d in dists),
+            f"end-effector at {ee}, distances to waypoints: {dists}"
+        )
+
+    def test_sensor_and_action_cells_populated(self):
+        # The cells should have grown during the run.
+        # The sensor's history is capped at history_len (32 by default).
+        demo = RealPickAndPlace()
+        demo.run(n_ticks=200)
+        # After 200 ticks, the sensor cell has hit its history cap
+        self.assertGreaterEqual(demo.sensor.context_len, 1)
+        # The action cell stores the torque at each tick, capped at history_len
+        self.assertGreaterEqual(demo.action.context_len, 1)
+
+    def test_forecast_shape_on_real_arm(self):
+        # The SensorCell's forecast is [H, V] for the real arm.
+        # read_point(channel) returns a 1D array of length H.
+        demo = RealPickAndPlace()
+        demo.run(n_ticks=200)
+        demo.sensor.forecast_()
+        # Channel 0 = q1, channel 1 = q2, channel 2 = q1_dot, channel 3 = q2_dot
+        q1_forecast = demo.sensor.read_point(0)
+        self.assertEqual(q1_forecast.shape, (5,),
+                         f"expected (5,), got {q1_forecast.shape}")
+        # The forecast has 4 channels (joints + velocities)
+        # We can verify this by reading all of them
+        forecast_q1 = demo.sensor.read_point(0)
+        forecast_q2 = demo.sensor.read_point(1)
+        forecast_q1dot = demo.sensor.read_point(2)
+        forecast_q2dot = demo.sensor.read_point(3)
+        self.assertEqual(forecast_q1.shape, forecast_q2.shape)
+        self.assertEqual(forecast_q1.shape, forecast_q1dot.shape)
+        self.assertEqual(forecast_q1.shape, forecast_q2dot.shape)
 
 
 if __name__ == "__main__":

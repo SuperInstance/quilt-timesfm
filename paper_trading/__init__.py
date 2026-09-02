@@ -23,6 +23,7 @@ It exercises every capability of the temporal stack:
 
 from .trader import PaperTrader, Trade, Portfolio, Position
 from .data import synthetic_price_stream, GeometricBrownianMotion, EXAMPLE_SHOCKS
+from .feeds import CSVPriceFeed, YahooFinanceFeed, RandomWalkFeed
 from .strategy import TradingDecisionSupport, TradingAction
 
 __all__ = [
@@ -33,6 +34,9 @@ __all__ = [
     "synthetic_price_stream",
     "GeometricBrownianMotion",
     "EXAMPLE_SHOCKS",
+    "CSVPriceFeed",
+    "YahooFinanceFeed",
+    "RandomWalkFeed",
     "TradingDecisionSupport",
     "TradingAction",
 ]
