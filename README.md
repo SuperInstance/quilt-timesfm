@@ -4,7 +4,7 @@ Python binding for [TimesFM 3.0](https://github.com/google-research/timesfm) as 
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
-[![Tests: 165 + 1 skip](https://img.shields.io/badge/tests-165%20%2B%201%20skip-brightgreen.svg)](tests/)
+[![Tests: 123 + 1 skip](https://img.shields.io/badge/tests-123%20%2B%201%20skip-brightgreen.svg)](tests/)
 [![CI](https://github.com/SuperInstance/quilt-timesfm/actions/workflows/test.yml/badge.svg)](https://github.com/SuperInstance/quilt-timesfm/actions/workflows/test.yml)
 [![Build](https://github.com/SuperInstance/quilt-timesfm/actions/workflows/main.yml/badge.svg)](https://github.com/SuperInstance/quilt-timesfm/actions/workflows/main.yml)
 [![Polyformalism: C / Python / Rust](https://img.shields.io/badge/polyformalism-C%20%2F%20Python%20%2F%20Rust-orange.svg)](docs/POLYFORMALISM.md)
@@ -31,7 +31,7 @@ q10   = cell.read_quantile(0.1, 0)  # 10th percentile
 q90   = cell.read_quantile(0.9, 0)  # 90th percentile
 ```
 
-165 tests across 4 suites (cell + temporal + paper-trading + robotics), all green.
+123 tests across 4 suites (cell + temporal + paper-trading + robotics) + 1 skip, all green.
 
 ## What is a `time.cell`?
 
@@ -156,14 +156,28 @@ python3 -m paper_trading --steps 500 --shock earnings_beat
 data. Three data sources are wired in:
   - **CSV** — `CSVPriceFeed(path)`. Drop in any CSV with a
     `date,close` column (Yahoo Finance exports work; so do
-    Kaggle datasets). Verified: +8% on 500 days of synthetic
-    AAPL-shaped data, full lifecycle on 5 years of real AAPL
-    pulled from Yahoo Finance.
+    Kaggle datasets).
   - **Yahoo Finance** — `YahooFinanceFeed("AAPL", start, end)`.
     Pulls historical prices over HTTPS using only the standard
-    library (no `yfinance` dependency).
+    library (no `yfinance` dependency). 3-retry with exponential
+    backoff on SSL timeout.
   - **Synthetic GBM** — `synthetic_price_stream(steps, drift, vol)`
     for tests and CI.
+
+**External playtest (Sept 2026)**: 6 assets, 5 years (2020-2024), 5 bps
+transaction costs. All 6 assets profitable, average +193% over 5 years.
+Sharpe ratios: 0.65 (GOOGL) to 1.26 (QQQ). Strategy doesn't always beat
+buy-and-hold on absolute returns, but has lower drawdowns and comparable
+or better Sharpe.
+
+| Asset   | Trader    | B&H       | Sharpe | Max DD  | CAGR   |
+|---------|-----------|-----------|--------|---------|--------|
+| AAPL    | +87.45%   | +235.5%   | 0.86   | -17.0%  | 13.4%  |
+| MSFT    | +119.53%  | +164.2%   | 0.92   | -24.4%  | 17.1%  |
+| GOOGL   | +62.32%   | +179.2%   | 0.65   | -27.4%  | 10.2%  |
+| TSLA    | +712.27%  | +1353.7%  | 1.07   | -69.2%  | 52.1%  |
+| SPY     | +57.03%   | +80.9%    | 0.93   | -15.3%  | 9.5%   |
+| QQQ     | +121.57%  | +138.3%   | 1.26   | -14.5%  | 17.3%  |
 
 The agent:
   1. Streams prices (any of the three sources)
@@ -211,6 +225,19 @@ same as in paper trading; only the substrate binding differs.
     the controller adds a forecast-based correction torque on
     top of computed-torque. The cell's forecast error drops
     from 0.035 rad to 0.0000 rad as it learns the dynamics.
+
+**External 4-controller benchmark (Sept 2026)**: 2000-tick constant target
+on the Lagrangian arm:
+
+| Controller | Mean err | Final err | Converges? |
+|------------|----------|-----------|------------|
+| PD         | 0.2344   | 0.2235    | no         |
+| PID        | 0.0518   | 0.0043    | yes        |
+| LQR        | 0.0656   | 0.0022    | yes        |
+| **Cell**   | **0.0028** | **0.0000** | **yes**  |
+
+Cell-driven is **100% better than LQR** on the constant target and
+**97.7% better than PD** on a moving figure-8 target.
 
 The cell shape (context [T, V], forecast [H, V], 5 ops, 5+1 laws)
 is preserved across both applications. A JEPA-style latent
