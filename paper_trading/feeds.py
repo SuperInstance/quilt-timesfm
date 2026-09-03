@@ -168,30 +168,59 @@ class YahooFinanceFeed:
         self._prices: Optional[List[Tuple[int, float]]] = None
 
     def _fetch(self) -> List[Tuple[int, float]]:
-        """Hit Yahoo Finance and parse the response."""
+        """Hit Yahoo Finance and parse the response. Retries on failure.
+
+        Yahoo's chart API is rate-limited and occasionally times
+        out on SSL handshake. We retry with exponential backoff
+        up to 3 times before giving up.
+        """
+        import time
         period1 = int(datetime.datetime.fromisoformat(self.start).timestamp())
         period2 = int(datetime.datetime.fromisoformat(self.end).timestamp())
         url = (
             f"{self.BASE_URL.format(ticker=self.ticker)}"
             f"?period1={period1}&period2={period2}&interval={self.interval}"
         )
-        req = urllib.request.Request(
-            url, headers={"User-Agent": "Mozilla/5.0 quilt-timesfm/1.0"}
+        last_err = None
+        for attempt in range(3):
+            try:
+                req = urllib.request.Request(
+                    url, headers={"User-Agent": "Mozilla/5.0 quilt-timesfm/1.0"}
+                )
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    raw = resp.read()
+                # Parse JSON without external libs
+                import json
+                data = json.loads(raw)
+                result = data["chart"]["result"][0]
+                timestamps = result["timestamp"]
+                closes = result["indicators"]["quote"][0]["close"]
+                prices = []
+                for ts, close in zip(timestamps, closes):
+                    if close is None:
+                        continue
+                    prices.append((ts * 1000, float(close)))
+                return prices
+            except Exception as e:
+                last_err = e
+                # Backoff: 1s, 2s, 4s
+                time.sleep(1.0 * (2 ** attempt))
+        raise RuntimeError(
+            f"Yahoo Finance fetch failed for {self.ticker} after 3 attempts: {last_err}"
         )
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            raw = resp.read()
-        # Parse JSON without external libs
-        import json
-        data = json.loads(raw)
-        result = data["chart"]["result"][0]
-        timestamps = result["timestamp"]
-        closes = result["indicators"]["quote"][0]["close"]
-        prices = []
-        for ts, close in zip(timestamps, closes):
-            if close is None:
-                continue
-            prices.append((ts * 1000, float(close)))
-        return prices
+
+    @property
+    def last_price(self) -> float:
+        """Most recent price (0.0 if not yet fetched)."""
+        if not hasattr(self, "_prices") or self._prices is None or not self._prices:
+            return 0.0
+        return self._prices[-1][1]
+
+    @property
+    def total_return(self) -> float:
+        if not hasattr(self, "_prices") or self._prices is None or len(self._prices) < 2:
+            return 0.0
+        return self._prices[-1][1] / self._prices[0][1] - 1.0
 
     def stream(self) -> Iterator[Tuple[int, float]]:
         """Yield (timestamp_ms, price) for the requested range."""

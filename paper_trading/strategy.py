@@ -110,8 +110,26 @@ class TradingDecisionSupport:
             relative_error = None
 
         # 1. Poor calibration → GATHER_DATA
+        # The threshold is dynamic: it's the asset's *recent realized
+        # volatility*, not a fixed 3%. An asset that moves 2%/day
+        # normally should not be flagged for 4% error — that's just
+        # normal noise. A 4% error on a low-vol asset (.5%/day) is
+        # real model failure.
         if calibration is not None and relative_error is not None:
-            if relative_error > 0.03 or calibration < 0.5:
+            # Estimate recent realized volatility from the relative
+            # uncertainty of the forecast (the CI width / price is
+            # a reasonable proxy for realized vol over the same
+            # horizon).
+            vol_estimate = max(relative_uncertainty, 0.005)  # floor at 0.5%
+            # The error is "too high" if it exceeds 2x the vol
+            # estimate — meaning the model is worse than just
+            # using the rolling mean.
+            error_threshold = 2.0 * vol_estimate
+            # Calibration: how often actuals land inside 90% CI.
+            # 0.5 means "half the time" — borderline. 0.7 is
+            # much better; 0.3 is much worse.
+            cal_threshold = 0.5
+            if relative_error > error_threshold or calibration < cal_threshold:
                 return TradingDecision(
                     action=TradingAction.GATHER_DATA,
                     confidence=0.6,
@@ -119,8 +137,9 @@ class TradingDecisionSupport:
                     horizon=forecast.horizon,
                     forecast_uri=forecast.uri,
                     rationale=(
-                        f"calibration {calibration:.2f} and relative error "
-                        f"{relative_error:.2%} suggest the model is unreliable; "
+                        f"calibration {calibration:.2f} < {cal_threshold:.1f} or "
+                        f"relative error {relative_error:.2%} > "
+                        f"2x vol {error_threshold:.2%}; "
                         f"skip the trade and gather more data"
                     ),
                 )

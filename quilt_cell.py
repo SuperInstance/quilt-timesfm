@@ -359,12 +359,22 @@ class TimeCell:
         noise = (h32 / float(1 << 30)).T  # [H, V] in [-2, +2]
         t_h = np.arange(H, dtype=np.float64)[:, None]  # [H, 1]
         point = last_value[None, :] + drift[None, :] * t_h + vol[None, :] * noise
-        # 9 quantiles: median at q=0.5 (index 4), offset by ±n*vol_per_step
-        # where vol_per_step is the empirical one-step std.
-        # This gives a 90% CI that ~matches the actuals' distribution.
-        q_offsets = (np.arange(9) - 4) * 0.5  # q0 at -2*vol_step, q8 at +2*vol_step
+        # 9 quantiles: median at q=0.5 (index 4), offset by ±k*vol*sqrt(t)
+        # where vol is the empirical one-step std. The CI width grows
+        # with sqrt(t) (Brownian motion) so 5-step-ahead CIs are
+        # ~2.2x wider than 1-step-ahead CIs. This gives a 90% CI
+        # that ~matches the actuals' distribution for forecasting
+        # horizons from 1 to 30.
+        q_offsets = (np.arange(9) - 4) * 0.5  # q0 at -2*vol*sqrt(t), q8 at +2*vol*sqrt(t)
         step_vol = (recent[1:] - recent[:-1]).std(axis=0) + 1e-6  # [V]
-        quantiles = point[None, :, :] + (step_vol[None, None, :] * q_offsets[:, None, None])
+        # Brownian CI: width grows with sqrt(horizon), not constant
+        sqrt_t = np.sqrt(np.arange(1, H + 1, dtype=np.float64))  # [H]
+        # 1.645 is the 90% z-score; q_offsets span -2..+2, so
+        # 90% CI at q1 and q8 corresponds to ~1.0*1.645*sigma.
+        # We scale by 1.645 to make the 90% CI hit 1.645*sigma.
+        ci_scale = 1.645
+        width = step_vol[None, :] * sqrt_t[:, None] * ci_scale  # [H, V]
+        quantiles = point[None, :, :] + (width[None, :, :] * q_offsets[:, None, None])
         self.forecast = Forecast(
             point=point, quantiles=quantiles,
             model_version=self.model_version, model_variant=self.model_variant,

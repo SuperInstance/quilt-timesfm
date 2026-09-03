@@ -155,7 +155,8 @@ class TestPaperTrader(unittest.TestCase):
     def test_portfolio_execute_buy(self):
         p = Portfolio(initial_cash=100_000.0, cash=100_000.0)
         # max_trade_pct=1.0 means "use up to 50% of cash (the buy cap)"
-        shares, cash_delta = p.execute("AAPL", "buy", 100.0, max_trade_pct=1.0)
+        # transaction_cost_bps=0.0 means "no transaction cost" for this test
+        shares, cash_delta = p.execute("AAPL", "buy", 100.0, max_trade_pct=1.0, transaction_cost_bps=0.0)
         # 50% of cash = 50k, divided by $100 = 500 shares
         self.assertAlmostEqual(shares, 500.0, places=4)
         self.assertAlmostEqual(cash_delta, -50_000.0, places=4)
@@ -165,12 +166,23 @@ class TestPaperTrader(unittest.TestCase):
 
     def test_portfolio_execute_buy_capped(self):
         # max_trade_pct=0.10 caps at 10% of portfolio
+        # transaction_cost_bps=0.0 means "no transaction cost" for this test
         p = Portfolio(initial_cash=100_000.0, cash=100_000.0)
-        shares, cash_delta = p.execute("AAPL", "buy", 100.0, max_trade_pct=0.10)
+        shares, cash_delta = p.execute("AAPL", "buy", 100.0, max_trade_pct=0.10, transaction_cost_bps=0.0)
         # min(50k, 10k) = 10k, divided by 100 = 100 shares
         self.assertAlmostEqual(shares, 100.0, places=4)
         self.assertAlmostEqual(cash_delta, -10_000.0, places=4)
         self.assertAlmostEqual(p.cash, 90_000.0, places=4)
+
+    def test_portfolio_execute_buy_with_cost(self):
+        # Test that transaction costs are deducted
+        p = Portfolio(initial_cash=100_000.0, cash=100_000.0)
+        # 50% of cash = 50k trade value; 5 bps = 0.05% = $25
+        shares, cash_delta = p.execute("AAPL", "buy", 100.0, max_trade_pct=1.0, transaction_cost_bps=5.0)
+        # Cash out = 50k + 25 = 50,025
+        self.assertAlmostEqual(shares, 500.0, places=4)
+        self.assertAlmostEqual(cash_delta, -50_025.0, places=4)
+        self.assertAlmostEqual(p.cash, 49_975.0, places=4)
 
     def test_portfolio_execute_hold(self):
         p = Portfolio(initial_cash=100_000.0, cash=100_000.0)

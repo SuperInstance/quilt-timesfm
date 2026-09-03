@@ -93,37 +93,51 @@ class Portfolio:
         action: str,
         price: float,
         max_trade_pct: float = 0.1,
+        transaction_cost_bps: float = 5.0,  # 5 bps = 0.05% per trade (typical retail)
     ) -> Tuple[float, float]:
         """Execute an action on `asset` at `price`. Returns (shares_traded, cash_delta).
 
         `max_trade_pct` caps the size of a single trade as a fraction
         of the portfolio. This is the "don't bet the farm" rule.
+
+        `transaction_cost_bps` is the per-side transaction cost in
+        basis points. 5 bps is typical for retail; institutional
+        is 1-2 bps. Applied to both buys and sells.
         """
         pos = self.positions.setdefault(asset, Position(asset=asset))
         portfolio_value = self.total_value({asset: price})
         max_trade_value = portfolio_value * max_trade_pct
+        cost_frac = transaction_cost_bps / 10000.0
         if action == "buy":
             # Use up to half of cash for the buy
             trade_value = min(self.cash * 0.5, max_trade_value)
             if trade_value <= 0:
                 return 0.0, 0.0
+            cost = trade_value * cost_frac
+            net_cash = trade_value + cost
+            if net_cash > self.cash:
+                trade_value = self.cash / (1 + cost_frac)
+                cost = trade_value * cost_frac
+                net_cash = trade_value + cost
             shares = trade_value / price
-            self.cash -= trade_value
+            self.cash -= net_cash
             # Update cost basis
             new_cost = pos.cost_basis * pos.shares + price * shares
             new_shares = pos.shares + shares
             pos.cost_basis = new_cost / new_shares if new_shares > 0 else 0.0
             pos.shares = new_shares
-            return shares, -trade_value
+            return shares, -net_cash
         if action == "sell":
             # Sell up to half of the position
             shares_to_sell = min(pos.shares * 0.5, max_trade_value / price)
             if shares_to_sell <= 0:
                 return 0.0, 0.0
             proceeds = shares_to_sell * price
-            self.cash += proceeds
+            cost = proceeds * cost_frac
+            net_proceeds = proceeds - cost
+            self.cash += net_proceeds
             pos.shares -= shares_to_sell
-            return shares_to_sell, proceeds
+            return shares_to_sell, net_proceeds
         if action == "half_size":
             # Treat as a half-sized buy
             return self.execute(asset, "buy", price, max_trade_pct=max_trade_pct / 2)

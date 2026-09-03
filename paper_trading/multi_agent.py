@@ -166,7 +166,14 @@ def crdt_merge_trade_logs(*trade_logs: List[dict]) -> Dict[str, dict]:
     """
     merged: Dict[str, dict] = {}
     for log in trade_logs:
-        for trade in log:
+        # Accept either a list of trade dicts or a dict keyed by URI
+        if isinstance(log, dict):
+            items = log.values()
+        else:
+            items = log
+        for trade in items:
+            if not isinstance(trade, dict):
+                continue
             uri = trade.get("forecast_uri")
             if uri is None:
                 continue
