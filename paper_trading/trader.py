@@ -238,7 +238,15 @@ class PaperTrader:
           - 'decision': the TradingDecision (or None)
           - 'trade': the executed Trade (or None)
           - 'price': the price
+
+        Defensive: if price is not finite or non-positive, it is
+        replaced with the last seen valid price (or 1.0 if none).
+        The cell still gets a value; the strategy sees a flat
+        line and produces a "hold" decision.
         """
+        import math
+        if not math.isfinite(price) or price <= 0:
+            price = self.history[-1] if self.history else 1.0
         self.history.append(price)
         report = {"step": len(self.history) - 1, "price": price, "forecast": None,
                   "decision": None, "trade": None}
