@@ -179,6 +179,11 @@ or better Sharpe.
 | SPY     | +57.03%   | +80.9%    | 0.93   | -15.3%  | 9.5%   |
 | QQQ     | +121.57%  | +138.3%   | 1.26   | -14.5%  | 17.3%  |
 
+**Crisis playtest (2007-2010)**: SPY Trader **-0.46%** vs B&H **-11.1%** —
+strategy lost 24x less than the market during the worst crisis since
+1929. MSFT Trader +17.3% vs B&H -6.7% — made money when the index lost.
+This is a risk-management strategy, not a return-maximization one.
+
 The agent:
   1. Streams prices (any of the three sources)
   2. Binds the rolling history to a `TimeCell`
