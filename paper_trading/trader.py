@@ -312,12 +312,16 @@ class PaperTrader:
         n_trades = 0
         n_actions = {"buy": 0, "sell": 0, "hold": 0, "half_size": 0, "gather_data": 0}
         initial_value = self.portfolio.total_value({self.asset: 0.0})
+        # Count only trades that change the position (buy, sell, half_size).
+        # hold and gather_data are decisions, not trades.
+        TRADING_ACTIONS = {"buy", "sell", "half_size"}
         for t, price in price_stream:
             report = self.step(price)
             if report["trade"] is not None:
-                n_trades += 1
                 action = report["trade"].action
                 n_actions[action] = n_actions.get(action, 0) + 1
+                if action in TRADING_ACTIONS:
+                    n_trades += 1
                 if verbose:
                     print(
                         f"t={t:4d} p={price:7.2f} "
