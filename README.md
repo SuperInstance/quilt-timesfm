@@ -184,6 +184,38 @@ strategy lost 24x less than the market during the worst crisis since
 1929. MSFT Trader +17.3% vs B&H -6.7% — made money when the index lost.
 This is a risk-management strategy, not a return-maximization one.
 
+**12-asset-class playtest**: Bitcoin +11,208%, Gold +334%, Nikkei +143%,
+FTSE 100 +55% (BEAT B&H!), Hang Seng +99% (BEAT B&H!). 10/12 profitable,
+3/12 beat buy-and-hold.
+
+**30-walk-forward-window playtest** (2010-2024, 6mo windows): SPY positive
+in 23/30 windows, AAPL 21/30, MSFT 16/30. 2022 H1/H2 (bear market) the
+worst, 2019 H2/2023 H1 the best.
+
+**4 ablation studies** on AAPL 2020-2024:
+- Trend forecast: +162% (default) vs Pure synthetic: 0% (no trades)
+- History: 32 too short, 64-256 all good
+- Horizon: 5 sweet spot, >10 hurts Sharpe
+- Max position: 0.10 default, 1.0 best (+214%) but high risk
+
+**Adversarial playtest**: NaN/Inf/negative prices/all-zeros/square wave —
+all handled gracefully, no crashes. Defensive clamping in place.
+
+**Stale data / out-of-order / duplicates**: P&L improves with up to 25%
+stale data (+244% vs +162% baseline). 5% OOO delivery: +161.50% (no change).
+50% duplicate ticks: +139.62%. System is **noise-resilient** because the
+trend forecast uses recent N values, not exact timestamps.
+
+**Polyformalism**: C TimeCell is 1.71 us/step, Python is 228 us/step
+(133x slower). Same shape, same conformance suite, different bit-exact
+state_hash because of language-specific RNGs.
+
+**30-year backtest**: 1.8 seconds for 30 years of daily data. SPY 30y:
++499% Trader vs +1185% B&H. AAPL 30y: +10,818% Trader vs +73,506% B&H.
+
+**20-agent CRDT swarm**: 11.57s for 1257 ticks × 20 agents. 11,040 total
+trades, all 20 agents profitable (mean +$134,703), CRDT merge 2ms.
+
 The agent:
   1. Streams prices (any of the three sources)
   2. Binds the rolling history to a `TimeCell`
